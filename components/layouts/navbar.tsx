@@ -33,7 +33,7 @@ const Navbar = () => {
         {/* Brand */}
         <Link href="/" className="flex items-center gap-2">
           <div className="w-6 h-6 bg-black rounded-lg flex items-center justify-center">
-            <span className="text-white text-[10px] font-bold italic">n.</span>
+            <span className="text-white text-[10px] font-black">n</span>
           </div>
           <span className="md:hidden text-[10px] font-bold tracking-widest text-black">
             numetrix.

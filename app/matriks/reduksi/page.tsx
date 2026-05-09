@@ -17,28 +17,71 @@ import {
   Binary,
   ArrowRight,
   CheckCircle2,
+  ArrowDown,
+  IterationCcw,
+  SplitSquareHorizontal,
 } from "lucide-react";
+
+// Interface sesuai response dari crout.ts backend
+interface CroutStep {
+  type: "baris_u" | "kolom_l" | "pivot";
+  label: string;
+  detail: string;
+}
 
 interface CroutResult {
   L: number[][];
   U: number[][];
   y: number[];
   x: number[];
+  forwardSteps: string[];
+  backwardSteps: string[];
+  decompositionSteps: CroutStep[];
 }
+
+// Helper: format angka ringkas
+const fmt = (n: number, dec = 4): string => {
+  if (typeof n !== "number" || !isFinite(n)) return "0";
+  const r = parseFloat(n.toFixed(dec));
+  return Number.isInteger(r) ? r.toString() : r.toFixed(dec);
+};
+
+// Warna badge per type step
+const stepTypeStyle: Record<
+  CroutStep["type"],
+  { bg: string; text: string; label: string }
+> = {
+  baris_u: {
+    bg: "bg-blue-100",
+    text: "text-blue-700",
+    label: "baris U",
+  },
+  kolom_l: {
+    bg: "bg-pink-100",
+    text: "text-pink-700",
+    label: "kolom L",
+  },
+  pivot: {
+    bg: "bg-amber-100",
+    text: "text-amber-700",
+    label: "pivot",
+  },
+};
 
 const ReduksiCroutPage = () => {
   const [showGuide, setShowGuide] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [results, setResults] = useState<CroutResult | null>(null);
+  const [showSteps, setShowSteps] = useState(false);
 
-  // State default sesuai contoh soal gambar
+  // Default sesuai Contoh 4.12 buku (setelah pivoting: baris sudah ditukar)
   const [matrixA, setMatrixA] = useState([
     [1, 1, -1],
-    [-1, 1, 1],
     [2, 2, 1],
+    [-1, 1, 1],
   ]);
-  const [vectorB, setVectorB] = useState([1, 1, 5]);
+  const [vectorB, setVectorB] = useState([1, 5, 1]);
 
   useEffect(() => {
     const hasSeenGuide = localStorage.getItem("hasSeenCroutGuide");
@@ -51,7 +94,7 @@ const ReduksiCroutPage = () => {
   };
 
   const handleAChange = (row: number, col: number, value: string) => {
-    const newMatrix = [...matrixA];
+    const newMatrix = matrixA.map((r) => [...r]);
     const parsed = parseFloat(value);
     newMatrix[row][col] = isNaN(parsed) ? 0 : parsed;
     setMatrixA(newMatrix);
@@ -66,20 +109,21 @@ const ReduksiCroutPage = () => {
 
   const resetInput = () => {
     setMatrixA([
-      [0, 0, 0],
-      [0, 0, 0],
-      [0, 0, 0],
+      [1, 1, -1],
+      [2, 2, 1],
+      [-1, 1, 1],
     ]);
-    setVectorB([0, 0, 0]);
+    setVectorB([1, 5, 1]);
     setResults(null);
     setError(null);
+    setShowSteps(false);
   };
 
-  // FUNGSI FETCH KE BACKEND
   const calculateCrout = async () => {
     setLoading(true);
     setError(null);
     setResults(null);
+    setShowSteps(false);
 
     try {
       const response = await fetch("/api/matriks/crout", {
@@ -96,7 +140,7 @@ const ReduksiCroutPage = () => {
       }
 
       setResults(data);
-    } catch (err) {
+    } catch {
       setError("koneksi ke server terputus.");
     } finally {
       setLoading(false);
@@ -114,11 +158,11 @@ const ReduksiCroutPage = () => {
         onOpenChange={setShowGuide}
         title="panduan crout"
         description="pahami skema pemfaktoran crout untuk efisiensi perhitungan spl."
-        theoryOverview="metode ini memfaktorkan A = LU dengan syarat elemen diagonal matriks U bernilai satu (uᵢᵢ = 1)."
+        theoryOverview="metode ini memfaktorkan A = LU dengan syarat elemen diagonal matriks U bernilai satu (uᵢᵢ = 1). penghitungan bergantian: baris U → kolom L → baris U → ..."
         steps={[
           "masukkan koefisien variabel pada matriks A.",
           "isi konstanta hasil pada vektor b.",
-          "klik tombol 'reduksi' untuk melihat hasil pemfaktoran L dan U serta solusi akhirnya.",
+          "klik tombol 'jalankan kalkulasi crout' untuk melihat hasil pemfaktoran L dan U, penyulihan maju (Ly=b), serta penyulihan mundur (Ux=y).",
         ]}
         onClose={handleCloseGuide}
       />
@@ -134,6 +178,7 @@ const ReduksiCroutPage = () => {
             </Button>
           </div>
 
+          {/* HERO SECTION */}
           <section className="bg-white rounded-[40px] md:rounded-[50px] p-8 md:p-16 border border-gray-100 shadow-2xl mb-8 overflow-hidden">
             <div className="flex flex-col md:flex-row justify-between items-center gap-12">
               <div className="max-w-xl flex-1">
@@ -166,6 +211,7 @@ const ReduksiCroutPage = () => {
             </div>
           </section>
 
+          {/* INPUT SECTION */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <Card className="lg:col-span-2 p-8 md:p-12 rounded-[40px] border-none shadow-xl bg-white flex flex-col gap-10">
               <div className="flex justify-between items-center">
@@ -188,12 +234,13 @@ const ReduksiCroutPage = () => {
               </div>
 
               <div className="flex flex-col md:flex-row items-center justify-center gap-8">
+                {/* Matrix A */}
                 <div className="grid grid-cols-3 gap-3 p-4 bg-gray-50 rounded-[30px] border border-gray-100 relative">
                   <span className="absolute -top-6 left-2 text-[10px] font-bold text-gray-300 uppercase tracking-widest">
                     matriks [A]
                   </span>
                   {matrixA.map((row, r) =>
-                    row.map((col, c) => (
+                    row.map((_, c) => (
                       <Input
                         key={`a-${r}-${c}`}
                         type="number"
@@ -204,12 +251,15 @@ const ReduksiCroutPage = () => {
                     )),
                   )}
                 </div>
+
                 <div className="flex flex-col items-center gap-1">
                   <span className="text-[10px] font-black text-gray-200 uppercase tracking-widest">
                     hasil
                   </span>
-                  <div className="h-20 w-[2px] bg-gray-100 hidden md:block"></div>
+                  <div className="h-20 w-[2px] bg-gray-100 hidden md:block" />
                 </div>
+
+                {/* Vector B */}
                 <div className="grid grid-cols-1 gap-3 p-4 bg-pink-50/50 rounded-[30px] border border-pink-100 relative">
                   <span className="absolute -top-6 left-2 text-[10px] font-bold text-pink-300 uppercase tracking-widest">
                     vektor [b]
@@ -238,6 +288,7 @@ const ReduksiCroutPage = () => {
               </Button>
             </Card>
 
+            {/* INFO PANEL */}
             <Card className="p-8 md:p-10 rounded-[40px] border-none shadow-xl bg-[#0a0a0a] text-white flex flex-col justify-between overflow-hidden relative">
               <div className="relative z-10">
                 <h3 className="text-lg font-bold mb-6 text-pink-400">
@@ -253,8 +304,32 @@ const ReduksiCroutPage = () => {
                       <span className="text-pink-400 font-bold underline">
                         (uᵢᵢ = 1)
                       </span>
-                      .
+                      , diagonal matriks L bebas.
                     </p>
+                  </div>
+                  <div className="p-4 bg-white/5 rounded-2xl border border-white/5">
+                    <p className="text-[10px] text-gray-500 mb-2 uppercase font-bold tracking-widest">
+                      urutan penghitungan:
+                    </p>
+                    <div className="space-y-2 text-[9px] font-mono text-gray-400">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-blue-400 shrink-0" />
+                        baris 1 dari U
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-pink-400 shrink-0" />
+                        kolom 1 dari L
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-blue-400 shrink-0" />
+                        baris 2 dari U
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-pink-400 shrink-0" />
+                        kolom 2 dari L
+                      </div>
+                      <div className="text-gray-600 ml-4">... dst</div>
+                    </div>
                   </div>
                   <div className="p-4 bg-white/5 rounded-2xl border border-white/5">
                     <p className="text-[10px] text-gray-500 mb-2 uppercase font-bold tracking-widest">
@@ -266,92 +341,322 @@ const ReduksiCroutPage = () => {
                   </div>
                 </div>
               </div>
-              <div className="absolute -right-16 -bottom-16 w-56 h-56 bg-pink-500/10 blur-[90px] rounded-full"></div>
+              <div className="absolute -right-16 -bottom-16 w-56 h-56 bg-pink-500/10 blur-[90px] rounded-full" />
             </Card>
           </div>
 
-          {/* AREA HASIL */}
+          {/* RESULTS SECTION */}
           <AnimatePresence>
             {results ? (
               <motion.div
+                key="results"
                 initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
                 className="mt-12 space-y-12"
               >
-                {/* Visualisasi Matriks L & U */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  <Card className="p-8 rounded-[40px] border-none shadow-lg bg-white">
-                    <h4 className="text-[10px] font-bold text-pink-600 uppercase tracking-[0.2em] mb-6 italic">
-                      matriks L (segitiga bawah)
-                    </h4>
-                    <div className="grid grid-cols-3 gap-2">
-                      {results.L.map((row, rIdx) =>
-                        row.map((val, cIdx) => (
-                          <div
-                            key={`${rIdx}-${cIdx}`}
-                            className="h-14 flex items-center justify-center bg-gray-50 text-black font-bold rounded-2xl text-sm border border-gray-100 shadow-sm"
-                          >
-                            {val.toFixed(2)}
-                          </div>
-                        )),
-                      )}
-                    </div>
-                  </Card>
-                  <Card className="p-8 rounded-[40px] border-none shadow-lg bg-white">
-                    <h4 className="text-[10px] font-bold text-blue-600 uppercase tracking-[0.2em] mb-6 italic">
-                      matriks U (segitiga atas)
-                    </h4>
-                    <div className="grid grid-cols-3 gap-2">
-                      {results.U.map((row, rIdx) =>
-                        row.map((val, cIdx) => (
-                          <div
-                            key={`${rIdx}-${cIdx}`}
-                            className="h-14 flex items-center justify-center bg-gray-50 text-black font-bold rounded-2xl text-sm border border-gray-100 shadow-sm"
-                          >
-                            {val.toFixed(2)}
-                          </div>
-                        )),
-                      )}
-                    </div>
-                  </Card>
+                {/* Matriks L & U */}
+                <div>
+                  <div className="flex items-center gap-4 mb-6">
+                    <h2 className="text-xl font-bold tracking-tighter text-black">
+                      hasil faktorisasi A = LU.
+                    </h2>
+                    <div className="h-[1px] flex-1 bg-gray-200" />
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    {/* Matriks L */}
+                    <Card className="p-8 rounded-[40px] border-none shadow-lg bg-white relative overflow-hidden">
+                      <span className="absolute top-4 right-6 text-[60px] font-black text-gray-50 select-none">
+                        L
+                      </span>
+                      <h4 className="text-[10px] font-bold text-pink-600 uppercase tracking-[0.2em] mb-2">
+                        matriks L (segitiga bawah)
+                      </h4>
+                      <p className="text-[10px] text-gray-400 mb-6 italic">
+                        diagonal L bebas (bukan 1), elemen atas diagonal = 0
+                      </p>
+                      <div
+                        className="grid gap-2"
+                        style={{
+                          gridTemplateColumns: `repeat(${results.L[0].length}, minmax(0, 1fr))`,
+                        }}
+                      >
+                        {results.L.map((row, rIdx) =>
+                          row.map((val, cIdx) => (
+                            <div
+                              key={`l-${rIdx}-${cIdx}`}
+                              className={`h-14 md:h-16 flex items-center justify-center font-bold rounded-2xl text-sm transition-colors ${
+                                rIdx === cIdx
+                                  ? "bg-pink-600 text-white shadow-lg shadow-pink-100"
+                                  : rIdx > cIdx
+                                    ? "bg-pink-50 text-pink-700"
+                                    : "bg-gray-50 text-gray-300"
+                              }`}
+                            >
+                              {fmt(val, 4)}
+                            </div>
+                          )),
+                        )}
+                      </div>
+                    </Card>
+
+                    {/* Matriks U */}
+                    <Card className="p-8 rounded-[40px] border-none shadow-lg bg-white relative overflow-hidden">
+                      <span className="absolute top-4 right-6 text-[60px] font-black text-gray-50 select-none">
+                        U
+                      </span>
+                      <h4 className="text-[10px] font-bold text-blue-600 uppercase tracking-[0.2em] mb-2">
+                        matriks U (segitiga atas)
+                      </h4>
+                      <p className="text-[10px] text-gray-400 mb-6 italic">
+                        diagonal U = 1 (syarat Crout), elemen bawah diagonal = 0
+                      </p>
+                      <div
+                        className="grid gap-2"
+                        style={{
+                          gridTemplateColumns: `repeat(${results.U[0].length}, minmax(0, 1fr))`,
+                        }}
+                      >
+                        {results.U.map((row, rIdx) =>
+                          row.map((val, cIdx) => (
+                            <div
+                              key={`u-${rIdx}-${cIdx}`}
+                              className={`h-14 md:h-16 flex items-center justify-center font-bold rounded-2xl text-sm transition-colors ${
+                                rIdx === cIdx
+                                  ? "bg-blue-600 text-white shadow-lg shadow-blue-100"
+                                  : rIdx < cIdx
+                                    ? "bg-blue-50 text-blue-700"
+                                    : "bg-gray-50 text-gray-300"
+                              }`}
+                            >
+                              {fmt(val, 4)}
+                            </div>
+                          )),
+                        )}
+                      </div>
+                    </Card>
+                  </div>
                 </div>
+
+                {/* Penyulihan Maju & Mundur */}
+                <div>
+                  <div className="flex items-center gap-4 mb-6">
+                    <h2 className="text-xl font-bold tracking-tighter text-black">
+                      proses penyulihan.
+                    </h2>
+                    <div className="h-[1px] flex-1 bg-gray-200" />
+                  </div>
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    {/* Forward Substitution: Ly = b */}
+                    <Card className="p-8 md:p-10 rounded-[40px] border-none shadow-lg bg-white">
+                      <div className="flex items-center gap-3 mb-6">
+                        <div className="w-10 h-10 bg-pink-600 rounded-xl flex items-center justify-center shrink-0">
+                          <ArrowDown className="text-white w-5 h-5" />
+                        </div>
+                        <div>
+                          <h4 className="font-bold tracking-tight">
+                            penyulihan maju
+                          </h4>
+                          <p className="text-[10px] text-gray-400 uppercase tracking-widest font-bold">
+                            Ly = b → cari y
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Vektor y */}
+                      <div className="flex gap-2 mb-6 flex-wrap">
+                        {results.y.map((val, i) => (
+                          <div
+                            key={i}
+                            className="flex flex-col items-center bg-pink-50 rounded-2xl px-4 py-3 min-w-[60px]"
+                          >
+                            <span className="text-[9px] font-bold text-pink-400 uppercase tracking-widest mb-1">
+                              y{i + 1}
+                            </span>
+                            <span className="text-lg font-bold text-pink-700 font-mono">
+                              {fmt(val)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="space-y-3">
+                        {results.forwardSteps?.map((step, i) => (
+                          <motion.div
+                            key={i}
+                            initial={{ opacity: 0, x: -10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: i * 0.06 }}
+                            className="p-4 bg-gray-50 rounded-2xl flex justify-between items-start gap-3"
+                          >
+                            <span className="text-[10px] text-gray-400 font-bold uppercase shrink-0">
+                              langkah {i + 1}
+                            </span>
+                            <span className="font-mono text-[11px] font-bold text-pink-600 text-right break-all">
+                              {step}
+                            </span>
+                          </motion.div>
+                        ))}
+                      </div>
+                    </Card>
+
+                    {/* Backward Substitution: Ux = y */}
+                    <Card className="p-8 md:p-10 rounded-[40px] border-none shadow-lg bg-white">
+                      <div className="flex items-center gap-3 mb-6">
+                        <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shrink-0">
+                          <IterationCcw className="text-white w-5 h-5" />
+                        </div>
+                        <div>
+                          <h4 className="font-bold tracking-tight">
+                            penyulihan mundur
+                          </h4>
+                          <p className="text-[10px] text-gray-400 uppercase tracking-widest font-bold">
+                            Ux = y → cari x
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Vektor x */}
+                      <div className="flex gap-2 mb-6 flex-wrap">
+                        {results.x.map((val, i) => (
+                          <div
+                            key={i}
+                            className="flex flex-col items-center bg-blue-50 rounded-2xl px-4 py-3 min-w-[60px]"
+                          >
+                            <span className="text-[9px] font-bold text-blue-400 uppercase tracking-widest mb-1">
+                              x{i + 1}
+                            </span>
+                            <span className="text-lg font-bold text-blue-700 font-mono">
+                              {fmt(val)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="space-y-3">
+                        {results.backwardSteps?.map((step, i) => (
+                          <motion.div
+                            key={i}
+                            initial={{ opacity: 0, x: 10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: i * 0.06 }}
+                            className="p-4 bg-gray-50 rounded-2xl flex justify-between items-start gap-3"
+                          >
+                            <span className="text-[10px] text-gray-400 font-bold uppercase shrink-0">
+                              langkah {i + 1}
+                            </span>
+                            <span className="font-mono text-[11px] font-bold text-blue-600 text-right break-all">
+                              {step}
+                            </span>
+                          </motion.div>
+                        ))}
+                      </div>
+                    </Card>
+                  </div>
+                </div>
+
+                {/* Log Dekomposisi (Collapsible) */}
+                {results.decompositionSteps &&
+                  results.decompositionSteps.length > 0 && (
+                    <div>
+                      <button
+                        onClick={() => setShowSteps((v) => !v)}
+                        className="flex items-center gap-3 group mb-6 w-full"
+                      >
+                        <SplitSquareHorizontal className="w-5 h-5 text-gray-400 group-hover:text-black transition-colors" />
+                        <h2 className="text-xl font-bold tracking-tighter text-black group-hover:text-pink-600 transition-colors">
+                          log dekomposisi L & U.
+                        </h2>
+                        <div className="h-[1px] flex-1 bg-gray-200" />
+                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest shrink-0">
+                          {showSteps
+                            ? "sembunyikan"
+                            : `tampilkan ${results.decompositionSteps.length} langkah`}
+                        </span>
+                      </button>
+
+                      <AnimatePresence>
+                        {showSteps && (
+                          <motion.div
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: "auto" }}
+                            exit={{ opacity: 0, height: 0 }}
+                            className="space-y-4 overflow-hidden"
+                          >
+                            {results.decompositionSteps.map((step, index) => {
+                              const style = stepTypeStyle[step.type];
+                              return (
+                                <motion.div
+                                  key={index}
+                                  initial={{ opacity: 0, x: -10 }}
+                                  animate={{ opacity: 1, x: 0 }}
+                                  transition={{ delay: index * 0.03 }}
+                                  className="bg-white p-6 rounded-[24px] shadow-sm border border-gray-50 flex flex-col gap-3"
+                                >
+                                  <div className="flex items-center gap-3">
+                                    <span className="w-7 h-7 rounded-full bg-pink-600 text-[9px] text-white flex items-center justify-center font-bold shadow-md shadow-pink-100 shrink-0">
+                                      {index + 1}
+                                    </span>
+                                    <span
+                                      className={`px-3 py-1 rounded-full text-[9px] font-bold uppercase tracking-widest ${style.bg} ${style.text}`}
+                                    >
+                                      {style.label}
+                                    </span>
+                                    <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">
+                                      {step.label}
+                                    </p>
+                                  </div>
+                                  <div className="p-3 bg-gray-50 rounded-xl">
+                                    <p className="font-mono text-[11px] text-gray-700 break-all leading-relaxed">
+                                      {step.detail}
+                                    </p>
+                                  </div>
+                                </motion.div>
+                              );
+                            })}
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  )}
 
                 {/* Solusi Akhir */}
                 <Card className="p-10 rounded-[45px] border-none shadow-2xl bg-black text-white text-center relative overflow-hidden">
                   <div className="relative z-10">
                     <CheckCircle2 className="w-12 h-12 text-pink-500 mx-auto mb-6" />
                     <h4 className="text-[10px] font-bold uppercase tracking-[0.4em] text-pink-500 mb-8 italic">
-                      solusi konvergen
+                      solusi konvergen — x = U⁻¹y
                     </h4>
                     <div className="flex flex-col md:flex-row justify-center gap-12 items-center">
                       {results.x.map((val, i) => (
-                        <div key={i} className="flex flex-col">
+                        <div key={i} className="flex flex-col items-center">
                           <span className="text-gray-500 text-[10px] uppercase mb-2 font-bold tracking-widest italic font-sans">
                             variabel x{i + 1}
                           </span>
                           <span className="text-5xl font-bold tracking-tighter text-white">
-                            {val.toFixed(4)}
+                            {fmt(val)}
                           </span>
                         </div>
                       ))}
                     </div>
                   </div>
-                  <div className="absolute -left-10 -bottom-10 w-40 h-40 bg-pink-500/20 blur-[80px] rounded-full"></div>
+                  <div className="absolute -left-10 -bottom-10 w-40 h-40 bg-pink-500/20 blur-[80px] rounded-full" />
                 </Card>
               </motion.div>
             ) : (
-              <div className="mt-12 opacity-50 grayscale cursor-not-allowed">
-                <div className="flex items-center gap-4 mb-8">
-                  <h2 className="text-xl font-bold tracking-tighter text-black">
-                    analisis reduksi & substitusi.
-                  </h2>
-                  <div className="h-[1px] flex-1 bg-gray-200"></div>
+              !loading && (
+                <div className="mt-12 opacity-50 grayscale cursor-not-allowed">
+                  <div className="flex items-center gap-4 mb-8">
+                    <h2 className="text-xl font-bold tracking-tighter text-black">
+                      analisis reduksi & substitusi.
+                    </h2>
+                    <div className="h-[1px] flex-1 bg-gray-200" />
+                  </div>
+                  <div className="bg-white/50 border border-dashed border-gray-300 rounded-[40px] h-40 flex items-center justify-center text-gray-400 italic text-sm px-10 text-center">
+                    klik tombol reduksi untuk melihat hasil pemfaktoran L dan U
+                    serta solusi akhir.
+                  </div>
                 </div>
-                <div className="bg-white/50 border border-dashed border-gray-300 rounded-[40px] h-40 flex items-center justify-center text-gray-400 italic text-sm px-10 text-center">
-                  klik tombol reduksi untuk melihat hasil pemfaktoran L dan U
-                  serta solusi akhir.
-                </div>
-              </div>
+              )
             )}
           </AnimatePresence>
         </div>

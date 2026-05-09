@@ -16,13 +16,14 @@ import {
   ArrowRight,
   Calculator,
   CheckCircle2,
+  Grid3X3,
 } from "lucide-react";
 
-// Interface untuk tipe data dari backend sesuai spesifikasi
+// Interface sesuai dengan response dari backend (balikan.ts)
 interface MatrixStep {
   label: string;
-  matrixA: number[][];
-  matrixInv: number[][];
+  matrixA: number[][]; // Sisi kiri [A] → menuju Identitas
+  matrixInv: number[][]; // Sisi kanan [I] → menuju A⁻¹
 }
 
 interface CalculationResult {
@@ -37,7 +38,7 @@ const MatriksBalikanPage = () => {
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<CalculationResult | null>(null);
 
-  // State Input (Default disesuaikan dengan contoh soal x1-x2+2x3=5, dst)
+  // State Input (default sesuai Contoh 4.9 dari buku)
   const [matrixA, setMatrixA] = useState([
     [1, -1, 2],
     [3, 0, 1],
@@ -45,7 +46,7 @@ const MatriksBalikanPage = () => {
   ]);
   const [vectorB, setVectorB] = useState([5, 10, 5]);
 
-  // Logic Onboarding: Muncul otomatis jika belum pernah melihat panduan
+  // Logic Onboarding: muncul otomatis jika belum pernah melihat panduan
   useEffect(() => {
     const hasSeenGuide = localStorage.getItem("hasSeenInverseGuide");
     if (!hasSeenGuide) setShowGuide(true);
@@ -57,7 +58,7 @@ const MatriksBalikanPage = () => {
   };
 
   const handleAChange = (row: number, col: number, value: string) => {
-    const newMatrix = [...matrixA];
+    const newMatrix = matrixA.map((r) => [...r]);
     newMatrix[row][col] = value === "" ? 0 : parseFloat(value);
     setMatrixA(newMatrix);
   };
@@ -92,22 +93,30 @@ const MatriksBalikanPage = () => {
       const data = await response.json();
 
       if (!response.ok) {
-        setError(data.error || "Gagal melakukan perhitungan.");
+        setError(data.error || "gagal melakukan perhitungan.");
         return;
       }
       setResults(data);
-    } catch (err) {
-      setError("Koneksi ke server terputus. Silakan coba lagi.");
+    } catch {
+      setError("koneksi ke server terputus. silakan coba lagi.");
     } finally {
       setLoading(false);
     }
+  };
+
+  // Helper: format angka agar ringkas (hilangkan desimal jika bulat)
+  const fmt = (n: number, decimals = 4) => {
+    const rounded = parseFloat(n.toFixed(decimals));
+    return Number.isInteger(rounded)
+      ? rounded.toString()
+      : rounded.toFixed(decimals);
   };
 
   return (
     <div className="antialiased bg-[#f2f2f2] min-h-screen font-sans selection:bg-blue-100 selection:text-blue-900 lowercase">
       <Navbar />
 
-      {/* PANGGILAN GUIDE MODAL DARI COMMON */}
+      {/* GUIDE MODAL */}
       <GuideModal
         isOpen={showGuide}
         onOpenChange={setShowGuide}
@@ -117,7 +126,7 @@ const MatriksBalikanPage = () => {
         steps={[
           "isi koefisien variabel pada matriks a (pastikan matriks tidak singular).",
           "masukkan nilai konstanta hasil pada vektor b.",
-          "klik 'hitung' untuk melihat log eliminasi baris dan solusi akhir.",
+          "klik 'hitung' untuk melihat log eliminasi baris, matriks invers akhir, dan solusi x = A⁻¹b.",
         ]}
         onClose={handleCloseGuide}
       />
@@ -159,7 +168,7 @@ const MatriksBalikanPage = () => {
               </div>
 
               <div className="flex flex-col md:flex-row items-center justify-center gap-8">
-                {/* Render Matrix Inputs A */}
+                {/* Matrix A Inputs */}
                 <div className="grid grid-cols-3 gap-3 p-4 bg-gray-50 rounded-[30px] border border-gray-100 relative">
                   <span className="absolute -top-6 left-2 text-[10px] font-bold text-gray-300 uppercase tracking-widest font-sans">
                     matriks a
@@ -177,9 +186,9 @@ const MatriksBalikanPage = () => {
                   )}
                 </div>
 
-                <div className="h-40 w-[2px] bg-gray-100 hidden md:block"></div>
+                <div className="h-40 w-[2px] bg-gray-100 hidden md:block" />
 
-                {/* Render Vector Input B */}
+                {/* Vector B Inputs */}
                 <div className="grid grid-cols-1 gap-3 p-4 bg-blue-50/50 rounded-[30px] border border-blue-100 relative">
                   <span className="absolute -top-6 left-2 text-[10px] font-bold text-blue-300 uppercase tracking-widest font-sans">
                     vektor b
@@ -234,7 +243,7 @@ const MatriksBalikanPage = () => {
                   ))}
                 </div>
               </div>
-              <div className="absolute -right-16 -bottom-16 w-56 h-56 bg-blue-500/10 blur-[90px] rounded-full"></div>
+              <div className="absolute -right-16 -bottom-16 w-56 h-56 bg-blue-500/10 blur-[90px] rounded-full" />
             </Card>
           </div>
 
@@ -242,38 +251,86 @@ const MatriksBalikanPage = () => {
           <AnimatePresence mode="wait">
             {results ? (
               <motion.div
+                key="results"
                 initial={{ opacity: 0, y: 50 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
                 className="mt-12 space-y-12"
               >
-                {/* Visualisasi Solusi Akhir */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  {results.solution.map((val, i) => (
-                    <Card
-                      key={i}
-                      className="p-10 rounded-[40px] border-none shadow-lg bg-white flex flex-col items-center justify-center group hover:bg-blue-600 transition-colors duration-500"
-                    >
-                      <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center mb-4 group-hover:bg-white/20">
-                        <CheckCircle2 className="w-5 h-5 text-blue-600 group-hover:text-white" />
-                      </div>
-                      <span className="text-[10px] font-bold text-blue-500 group-hover:text-white uppercase tracking-[0.2em] mb-2">
-                        variabel x{i + 1}
-                      </span>
-                      <h4 className="text-5xl font-bold tracking-tighter group-hover:text-white">
-                        {val.toFixed(4)}
-                      </h4>
-                    </Card>
-                  ))}
+                {/* Solusi x = A⁻¹b */}
+                <div>
+                  <div className="flex items-center gap-4 mb-6">
+                    <h2 className="text-xl font-bold tracking-tighter text-black">
+                      solusi x = a⁻¹b.
+                    </h2>
+                    <div className="h-[1px] flex-1 bg-gray-200" />
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    {results.solution.map((val, i) => (
+                      <Card
+                        key={i}
+                        className="p-10 rounded-[40px] border-none shadow-lg bg-white flex flex-col items-center justify-center group hover:bg-blue-600 transition-colors duration-500"
+                      >
+                        <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center mb-4 group-hover:bg-white/20">
+                          <CheckCircle2 className="w-5 h-5 text-blue-600 group-hover:text-white" />
+                        </div>
+                        <span className="text-[10px] font-bold text-blue-500 group-hover:text-white uppercase tracking-[0.2em] mb-2">
+                          variabel x{i + 1}
+                        </span>
+                        <h4 className="text-5xl font-bold tracking-tighter group-hover:text-white">
+                          {fmt(val)}
+                        </h4>
+                      </Card>
+                    ))}
+                  </div>
                 </div>
 
-                {/* Log Iterasi/Langkah Baris */}
+                {/* Matriks Invers Akhir A⁻¹ */}
+                <div>
+                  <div className="flex items-center gap-4 mb-6">
+                    <h2 className="text-xl font-bold tracking-tighter text-black">
+                      matriks invers a⁻¹.
+                    </h2>
+                    <div className="h-[1px] flex-1 bg-gray-200" />
+                  </div>
+                  <Card className="p-8 md:p-10 rounded-[40px] border-none shadow-lg bg-white">
+                    <div className="flex items-start gap-6">
+                      <div className="w-10 h-10 rounded-2xl bg-blue-50 flex items-center justify-center shrink-0 mt-1">
+                        <Grid3X3 className="w-5 h-5 text-blue-600" />
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-4">
+                          hasil akhir eliminasi gauss-jordan
+                        </p>
+                        <div
+                          className="grid gap-2"
+                          style={{
+                            gridTemplateColumns: `repeat(${results.finalInverse[0].length}, minmax(0, 1fr))`,
+                          }}
+                        >
+                          {results.finalInverse.map((row, ri) =>
+                            row.map((val, ci) => (
+                              <div
+                                key={`finv-${ri}-${ci}`}
+                                className="w-16 h-16 flex items-center justify-center text-sm font-mono font-bold bg-blue-50 text-blue-700 rounded-2xl border border-blue-100"
+                              >
+                                {fmt(val)}
+                              </div>
+                            )),
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </Card>
+                </div>
+
+                {/* Log Langkah Eliminasi */}
                 <div className="space-y-8">
                   <div className="flex items-center gap-4">
                     <h2 className="text-xl font-bold tracking-tighter text-black">
                       log eliminasi baris.
                     </h2>
-                    <div className="h-[1px] flex-1 bg-gray-200"></div>
+                    <div className="h-[1px] flex-1 bg-gray-200" />
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -283,11 +340,11 @@ const MatriksBalikanPage = () => {
                         initial={{ opacity: 0, x: -20 }}
                         whileInView={{ opacity: 1, x: 0 }}
                         viewport={{ once: true }}
-                        transition={{ delay: index * 0.05 }}
+                        transition={{ delay: index * 0.04 }}
                         className="bg-white p-8 rounded-[40px] shadow-sm border border-gray-50 flex flex-col gap-6"
                       >
                         <div className="flex items-center gap-4">
-                          <span className="w-8 h-8 rounded-full bg-blue-600 text-[10px] text-white flex items-center justify-center font-bold shadow-lg shadow-blue-200">
+                          <span className="w-8 h-8 rounded-full bg-blue-600 text-[10px] text-white flex items-center justify-center font-bold shadow-lg shadow-blue-200 shrink-0">
                             {index + 1}
                           </span>
                           <p className="text-[11px] font-bold text-gray-500 uppercase tracking-widest font-sans">
@@ -296,27 +353,41 @@ const MatriksBalikanPage = () => {
                         </div>
 
                         <div className="flex items-center gap-4 justify-between bg-gray-50/50 p-6 rounded-[30px] border border-gray-50 overflow-x-auto">
-                          <div className="grid grid-cols-3 gap-1.5 min-w-fit">
+                          {/* Sisi kiri: bagian A */}
+                          <div
+                            className="grid gap-1.5 min-w-fit"
+                            style={{
+                              gridTemplateColumns: `repeat(${step.matrixA[0].length}, minmax(0, 1fr))`,
+                            }}
+                          >
                             {step.matrixA.map((r, ri) =>
                               r.map((c, ci) => (
                                 <div
                                   key={`a-${ri}-${ci}`}
                                   className="w-10 h-10 flex items-center justify-center text-[10px] font-mono font-bold bg-white rounded-xl shadow-sm border border-gray-100"
                                 >
-                                  {c.toFixed(2)}
+                                  {fmt(c, 2)}
                                 </div>
                               )),
                             )}
                           </div>
+
                           <ArrowRight className="w-5 h-5 text-gray-300 shrink-0" />
-                          <div className="grid grid-cols-3 gap-1.5 min-w-fit">
+
+                          {/* Sisi kanan: bagian Inv */}
+                          <div
+                            className="grid gap-1.5 min-w-fit"
+                            style={{
+                              gridTemplateColumns: `repeat(${step.matrixInv[0].length}, minmax(0, 1fr))`,
+                            }}
+                          >
                             {step.matrixInv.map((r, ri) =>
                               r.map((c, ci) => (
                                 <div
                                   key={`inv-${ri}-${ci}`}
                                   className="w-10 h-10 flex items-center justify-center text-[10px] font-mono font-bold bg-blue-50 text-blue-600 rounded-xl shadow-sm border border-blue-100"
                                 >
-                                  {c.toFixed(2)}
+                                  {fmt(c, 2)}
                                 </div>
                               )),
                             )}
@@ -333,7 +404,7 @@ const MatriksBalikanPage = () => {
                   <h2 className="text-xl font-bold tracking-tighter text-black">
                     hasil perhitungan.
                   </h2>
-                  <div className="h-[1px] flex-1 bg-gray-200"></div>
+                  <div className="h-[1px] flex-1 bg-gray-200" />
                 </div>
                 <div className="bg-white/50 border border-dashed border-gray-300 rounded-[40px] h-60 flex items-center justify-center text-gray-400 italic text-sm px-10 text-center leading-loose lowercase">
                   masukkan data pada kolom di atas <br /> lalu klik tombol
