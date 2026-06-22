@@ -1,10 +1,9 @@
-// components/layout/navbar.tsx
 "use client";
 
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
-import { ChevronDown } from "lucide-react"; // Install lucide-react jika belum
+import { ChevronDown } from "lucide-react";
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);

@@ -21,7 +21,6 @@ export function solveJacobi(
   const n = b.length;
   const history: JacobiIteration[] = [];
 
-  // Masukkan Iterasi 0 (Tebakan Awal)
   history.push({
     iterasi: 0,
     x: x[0],
@@ -35,7 +34,6 @@ export function solveJacobi(
   for (let k = 0; k < maxIter; k++) {
     const xNext = new Array(n).fill(0);
 
-    // Hitung nilai baru berdasarkan x lama
     for (let i = 0; i < n; i++) {
       let sigma = 0;
       for (let j = 0; j < n; j++) {
@@ -46,12 +44,11 @@ export function solveJacobi(
       xNext[i] = (b[i] - sigma) / A[i][i];
     }
 
-    // Hitung Galat Relatif (%)
+  
     const gX = x[0] !== 0 ? Math.abs((xNext[0] - x[0]) / x[0]) * 100 : 100;
     const gY = x[1] !== 0 ? Math.abs((xNext[1] - x[1]) / x[1]) * 100 : 100;
     const gZ = x[2] !== 0 ? Math.abs((xNext[2] - x[2]) / x[2]) * 100 : 100;
 
-    // Update x untuk iterasi selanjutnya
     x = [...xNext];
 
     history.push({

@@ -78,7 +78,7 @@ const GaussSeidelPage = () => {
     setError(null);
     setIterations([]);
     try {
-      const response = await fetch("/api/spl/seidel", {
+      const response = await fetch("/api/spl/=seidel", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
