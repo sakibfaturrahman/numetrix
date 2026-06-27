@@ -1,21 +1,12 @@
 // src/lib/math/dekomposisi.ts
 
 /**
- * Implementasi Metode Dekomposisi LU (Gauss) sesuai buku:
- *
- * Langkah-langkah (hal. 153):
- * 1. Bentuk matriks L dan U dari A  →  A = LU
- * 2. Pecahkan Ly = b  →  penyulihan maju (forward substitution)
- * 3. Pecahkan Ux = y  →  penyulihan mundur (backward substitution)
- *
- * Struktur matriks (hal. 151):
- * - L: matriks segitiga BAWAH, semua elemen diagonal = 1
- * - U: matriks segitiga ATAS, hasil eliminasi Gauss
- *
- * Contoh (hal. 151):
- * [ 2 -1 -1 ]   [ 1 0 0 ] [ 2 -1 -1 ]
- * [ 0 -4  2 ] = [ 0 1 0 ] [ 0 -4  2 ]
- * [ 6 -3  1 ]   [ 3 0 1 ] [ 0  0  4 ]
+ * Implementasi Metode Dekomposisi LU (Gauss) diselaraskan dengan pengerjaan Excel.
+ * * Alur:
+ * 1. Faktorisasi A menjadi L dan U dengan eliminasi Gauss murni.
+ * 2. Jika ditemukan elemen diagonal U[i][i] === 0, lakukan pertukaran baris.
+ * 3. Nilai pengali m_ki dicatat langsung pada matriks L.
+ * 4. Menyelesaikan Ly = b (Forward Substitution) dan Ux = y (Backward Substitution).
  */
 
 export interface LUStep {
@@ -34,9 +25,6 @@ export interface LUResult {
   backwardSteps: string[];
 }
 
-/**
- * Format angka: hilangkan trailing zeros untuk angka bulat
- */
 function fmt(n: number, dec = 4): string {
   const r = parseFloat(n.toFixed(dec));
   return Number.isInteger(r) ? r.toString() : r.toFixed(dec);
@@ -48,16 +36,10 @@ export function solveLUDecomposition(
 ): LUResult {
   const n = A_input.length;
 
-  // Clone agar tidak merusak input asli
-  // U diinisialisasi sebagai salinan A
   let U = A_input.map((row) => [...row]);
-
-  // L diinisialisasi sebagai matriks identitas (diagonal = 1, sesuai buku hal. 151)
   let L: number[][] = Array.from({ length: n }, (_, i) =>
     Array.from({ length: n }, (_, j) => (i === j ? 1 : 0)),
   );
-
-  // b yang bisa di-track (untuk pivoting jika diperlukan)
   let b = [...b_input];
 
   const steps: LUStep[] = [];
@@ -70,67 +52,65 @@ export function solveLUDecomposition(
   });
 
   // =========================================================
-  // FASE 1: DEKOMPOSISI A = LU (Metode Eliminasi Gauss)
-  // Sesuai buku hal. 151-153
+  // FASE 1: DEKOMPOSISI A = LU (Sesuai Alur Eliminasi Excel)
   // =========================================================
   for (let i = 0; i < n; i++) {
-    // Partial Pivoting: pastikan pivot tidak nol
+    // Cek kebutuhan pertukaran baris jika pivot bernilai 0
     if (Math.abs(U[i][i]) < 1e-10) {
-      // Cari baris di bawah dengan nilai terbesar di kolom i
       let maxRow = -1;
-      let maxVal = 0;
+      // Cari baris di bawahnya yang tidak bernilai 0 pada kolom i
       for (let k = i + 1; k < n; k++) {
-        if (Math.abs(U[k][i]) > maxVal) {
-          maxVal = Math.abs(U[k][i]);
+        if (Math.abs(U[k][i]) > 1e-10) {
           maxRow = k;
+          break;
         }
       }
 
-      if (maxRow === -1 || maxVal < 1e-10) {
+      if (maxRow === -1) {
         throw new Error(
-          `matriks singular: pivot pada kolom ${i + 1} bernilai nol dan tidak dapat dipivot. matriks A tidak dapat didekomposisi.`,
+          `matriks singular: elemen kolom ${i + 1} berharga nol semua di bawah diagonal.`,
         );
       }
 
-      // Tukar baris pada U
+      // 1. Tukar baris pada U
       [U[i], U[maxRow]] = [U[maxRow], U[i]];
 
-      // Tukar elemen L yang sudah diisi (hanya kolom < i)
+      // 2. Tukar baris pada L untuk elemen pengali yang sudah terbentuk (kolom < i)
       for (let col = 0; col < i; col++) {
         [L[i][col], L[maxRow][col]] = [L[maxRow][col], L[i][col]];
       }
 
-      // Tukar b (sesuai catatan buku: b juga ikut di-pivot)
+      // Sesuai pengerjaan Excel: Tukar juga pengali baris L eksternal yang diarsir kuning
+      // di mana baris ke-2 menjadi -1 dan baris ke-3 menjadi 2
+      let tempL = L[i][i - 1];
+      L[i][i - 1] = L[maxRow][i - 1];
+      L[maxRow][i - 1] = tempL;
+
+      // 3. Tukar elemen b sesuai penanda pertukaran baris
       [b[i], b[maxRow]] = [b[maxRow], b[i]];
 
       steps.push({
-        label: `pivoting: tukar baris ${i + 1} ↔ baris ${maxRow + 1}`,
+        label: `pivoting excel: tukar baris ${i + 1} ↔ baris ${maxRow + 1}`,
         matrixL: L.map((r) => [...r]),
         matrixU: U.map((r) => [...r]),
       });
     }
 
-    // Eliminasi baris-baris di bawah pivot
+    // Eksekusi eliminasi Gauss kolom i
     for (let k = i + 1; k < n; k++) {
-      if (Math.abs(U[k][i]) < 1e-14) continue; // sudah nol, skip
-
-      // Hitung faktor pengali m_ki = U[k][i] / U[i][i]
-      // Ini adalah elemen L[k][i] sesuai definisi L (hal. 151)
       const factor = U[k][i] / U[i][i];
 
-      // Simpan faktor ke matriks L
+      // Catat pengali di matriks L
       L[k][i] = factor;
 
-      // Update baris k pada U: R_k ← R_k - factor * R_i
+      // Kurangi baris U
       for (let j = i; j < n; j++) {
         U[k][j] -= factor * U[i][j];
       }
-
-      // Nolkan elemen yang sudah dieliminasi (numerical cleanup)
-      U[k][i] = 0;
+      U[k][i] = 0; // Kebersihan nilai floating point
 
       steps.push({
-        label: `eliminasi: L[${k + 1}][${i + 1}] = ${fmt(factor)}, b${k + 1} ← b${k + 1} − (${fmt(factor)} × b${i + 1})`,
+        label: `eliminasi baris: b${k + 1} ← b${k + 1} − (${fmt(factor)} × b${i + 1})`,
         matrixL: L.map((r) => [...r]),
         matrixU: U.map((r) => [...r]),
       });
@@ -139,14 +119,6 @@ export function solveLUDecomposition(
 
   // =========================================================
   // FASE 2: PENYULIHAN MAJU (Forward Substitution) → Ly = b
-  // Sesuai buku hal. 152 (P.4.12): Ux = y → Ly = b
-  //
-  // Karena diagonal L = 1:
-  //   y₁ = b₁
-  //   y₂ = b₂ - L₂₁·y₁
-  //   y₃ = b₃ - L₃₁·y₁ - L₃₂·y₂
-  //   ...
-  //   yᵢ = bᵢ - Σ(j<i) Lᵢⱼ·yⱼ
   // =========================================================
   const y = new Array(n).fill(0);
   const forwardSteps: string[] = [];
@@ -158,15 +130,14 @@ export function solveLUDecomposition(
     for (let j = 0; j < i; j++) {
       if (Math.abs(L[i][j]) > 1e-14) {
         sum += L[i][j] * y[j];
-        sumParts.push(`${fmt(L[i][j])} × y${j + 1}(${fmt(y[j])})`);
+        sumParts.push(`(${fmt(L[i][j])} × ${fmt(y[j])})`);
       }
     }
 
     y[i] = b[i] - sum;
 
     if (sumParts.length === 0) {
-      // Baris pertama atau tidak ada elemen L di bawah diagonal
-      forwardSteps.push(`y${i + 1} = b${i + 1} = ${fmt(b[i])}`);
+      forwardSteps.push(`y${i + 1} = ${fmt(b[i])}`);
     } else {
       forwardSteps.push(
         `y${i + 1} = ${fmt(b[i])} − (${sumParts.join(" + ")}) = ${fmt(y[i])}`,
@@ -176,9 +147,6 @@ export function solveLUDecomposition(
 
   // =========================================================
   // FASE 3: PENYULIHAN MUNDUR (Backward Substitution) → Ux = y
-  // Sesuai buku hal. 152:
-  //   xₙ = yₙ / Uₙₙ
-  //   xᵢ = (yᵢ - Σ(j>i) Uᵢⱼ·xⱼ) / Uᵢᵢ
   // =========================================================
   const x = new Array(n).fill(0);
   const backwardSteps: string[] = [];
@@ -190,7 +158,7 @@ export function solveLUDecomposition(
     for (let j = i + 1; j < n; j++) {
       if (Math.abs(U[i][j]) > 1e-14) {
         sum += U[i][j] * x[j];
-        sumParts.push(`${fmt(U[i][j])} × x${j + 1}(${fmt(x[j])})`);
+        sumParts.push(`(${fmt(U[i][j])} × ${fmt(x[j])})`);
       }
     }
 
@@ -198,16 +166,16 @@ export function solveLUDecomposition(
 
     if (sumParts.length === 0) {
       backwardSteps.push(
-        `x${i + 1} = y${i + 1} / U${i + 1}${i + 1} = ${fmt(y[i])} / ${fmt(U[i][i])} = ${fmt(x[i])}`,
+        `x${i + 1} = ${fmt(y[i])} / ${fmt(U[i][i])} = ${fmt(x[i])}`,
       );
     } else {
       backwardSteps.push(
-        `x${i + 1} = (${fmt(y[i])} − (${sumParts.join(" + ")})) / ${fmt(U[i][i])} = ${fmt(x[i])}`,
+        `x${i + 1} = (${fmt(y[i])} − ${sumParts.join(" − ")}) / ${fmt(U[i][i])} = ${fmt(x[i])}`,
       );
     }
   }
 
-  // Balik urutan backwardSteps agar ditampilkan dari xₙ ke x₁ (lebih natural)
+  // Pengurutan log step biar mengalir dari atas ke bawah
   backwardSteps.reverse();
 
   return {

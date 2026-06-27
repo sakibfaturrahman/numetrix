@@ -19,11 +19,10 @@ import {
   Grid3X3,
 } from "lucide-react";
 
-// Interface sesuai dengan response dari backend (balikan.ts)
 interface MatrixStep {
   label: string;
-  matrixA: number[][]; // Sisi kiri [A] → menuju Identitas
-  matrixInv: number[][]; // Sisi kanan [I] → menuju A⁻¹
+  matrixA: number[][];
+  matrixInv: number[][];
 }
 
 interface CalculationResult {
@@ -38,7 +37,7 @@ const MatriksBalikanPage = () => {
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<CalculationResult | null>(null);
 
-  // State Input (default sesuai Contoh 4.9 dari buku)
+  // Default value based on Buku Contoh 4.9
   const [matrixA, setMatrixA] = useState([
     [1, -1, 2],
     [3, 0, 1],
@@ -46,7 +45,6 @@ const MatriksBalikanPage = () => {
   ]);
   const [vectorB, setVectorB] = useState([5, 10, 5]);
 
-  // Logic Onboarding: muncul otomatis jika belum pernah melihat panduan
   useEffect(() => {
     const hasSeenGuide = localStorage.getItem("hasSeenInverseGuide");
     if (!hasSeenGuide) setShowGuide(true);
@@ -104,7 +102,6 @@ const MatriksBalikanPage = () => {
     }
   };
 
-  // Helper: format angka agar ringkas (hilangkan desimal jika bulat)
   const fmt = (n: number, decimals = 4) => {
     const rounded = parseFloat(n.toFixed(decimals));
     return Number.isInteger(rounded)
@@ -116,7 +113,6 @@ const MatriksBalikanPage = () => {
     <div className="antialiased bg-[#f2f2f2] min-h-screen font-sans selection:bg-blue-100 selection:text-blue-900 lowercase">
       <Navbar />
 
-      {/* GUIDE MODAL */}
       <GuideModal
         isOpen={showGuide}
         onOpenChange={setShowGuide}
@@ -135,7 +131,6 @@ const MatriksBalikanPage = () => {
         <div className="max-w-6xl mx-auto">
           <ErrorMessage message={error} onClose={() => setError(null)} />
 
-          {/* Tombol Bantuan Mengambang */}
           <div className="fixed bottom-10 right-10 z-[100]">
             <Button
               onClick={() => setShowGuide(true)}

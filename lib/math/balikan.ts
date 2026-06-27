@@ -2,8 +2,8 @@
 
 export interface MatrixStep {
   label: string;
-  matrixA: number[][]; // Bagian kiri [A] → menuju Identitas I
-  matrixInv: number[][]; // Bagian kanan [I] → menuju Invers A⁻¹
+  matrixA: number[][]; // Sisi kiri [A] → menuju Identitas I
+  matrixInv: number[][]; // Sisi kanan [I] → menuju Invers A⁻¹
 }
 
 export interface BalikanResult {
@@ -14,15 +14,7 @@ export interface BalikanResult {
 
 /**
  * Menyelesaikan SPL Ax = b menggunakan metode Matriks Balikan.
- *
- * Langkah sesuai buku (Contoh 4.9):
- * 1. Bentuk matriks augmented [A | I]
- * 2. Lakukan eliminasi Gauss-Jordan pada sisi kiri hingga menjadi I
- *    → Sisi kanan otomatis menjadi A⁻¹
- * 3. Hitung solusi: x = A⁻¹ · b
- *
- * Catatan: Jika terjadi pivoting (pertukaran baris), baris-baris pada b
- * juga harus dipertukarkan (sesuai catatan akhir buku).
+ * Versi Murni Gauss-Jordan (Sesuai hitungan Excel tanpa Pivoting)
  */
 export function solveInverseGaussJordan(
   A_input: number[][],
@@ -30,9 +22,8 @@ export function solveInverseGaussJordan(
 ): BalikanResult {
   const n = A_input.length;
 
-  // Clone agar tidak merusak state asli
   let A = A_input.map((row) => [...row]);
-  let b = [...b_input]; // b juga di-track untuk partial pivoting
+  let b = [...b_input];
 
   // Inisialisasi sisi kanan sebagai matriks identitas I
   let Inv: number[][] = Array.from({ length: n }, (_, i) =>
@@ -48,79 +39,62 @@ export function solveInverseGaussJordan(
     matrixInv: Inv.map((r) => [...r]),
   });
 
-  // === FASE FORWARD: Gauss-Jordan dengan Partial Pivoting ===
+  // === FASE ELIMINASI GAUSS-JORDAN (TANPA PIVOTING, SEPERTI EXCEL) ===
   for (let i = 0; i < n; i++) {
-    // --- Partial Pivoting: cari baris dengan nilai absolut terbesar di kolom i ---
-    let maxRow = i;
-    let maxVal = Math.abs(A[i][i]);
-    for (let k = i + 1; k < n; k++) {
-      if (Math.abs(A[k][i]) > maxVal) {
-        maxVal = Math.abs(A[k][i]);
-        maxRow = k;
-      }
+    const pivot = A[i][i];
+
+    // Cek jika pivot nol (tidak bisa membagi langsung)
+    if (Math.abs(pivot) < 1e-10) {
+      throw new Error(
+        `pivot berharga 0 pada baris ${i + 1}. metode tanpa pivoting tidak dapat melanjutkan perhitungan.`,
+      );
     }
 
-    // Lakukan pertukaran baris jika diperlukan
-    if (maxRow !== i) {
-      [A[i], A[maxRow]] = [A[maxRow], A[i]];
-      [Inv[i], Inv[maxRow]] = [Inv[maxRow], Inv[i]];
-      // Sesuai catatan buku: b juga harus dipertukarkan
-      [b[i], b[maxRow]] = [b[maxRow], b[i]];
+    // --- Normalisasi Baris Pivot: Bagi baris dengan nilai pivotnya ---
+    if (Math.abs(pivot - 1) > 1e-10) {
+      for (let j = 0; j < n; j++) {
+        A[i][j] /= pivot;
+        Inv[i][j] /= pivot;
+      }
 
       steps.push({
-        label: `tukar baris ${i + 1} ↔ baris ${maxRow + 1} (pivoting)`,
+        label: `normalisasi baris ${i + 1}: b${i + 1} × 1/${pivot % 1 === 0 ? pivot.toFixed(0) : pivot.toFixed(2)}`,
         matrixA: A.map((r) => [...r]),
         matrixInv: Inv.map((r) => [...r]),
       });
     }
 
-    const pivot = A[i][i];
-
-    // Cek singular: jika pivot ≈ 0, matriks tidak memiliki invers
-    if (Math.abs(pivot) < 1e-10) {
-      throw new Error(
-        "matriks singular (determinan nol), invers tidak ada. pastikan matriks a tidak singular.",
-      );
-    }
-
-    // --- Normalisasi baris pivot: bagi seluruh baris dengan pivot ---
-    // Tujuan: jadikan A[i][i] = 1  (sesuai langkah buku: R₂ - 3R₁, dst.)
-    for (let j = 0; j < n; j++) {
-      A[i][j] /= pivot;
-      Inv[i][j] /= pivot;
-    }
-
-    steps.push({
-      label: `normalisasi baris ${i + 1}: b${i + 1} ÷ ${pivot % 1 === 0 ? pivot.toFixed(0) : pivot.toFixed(4)}`,
-      matrixA: A.map((r) => [...r]),
-      matrixInv: Inv.map((r) => [...r]),
-    });
-
-    // --- Eliminasi: nolkan semua elemen di kolom i selain baris i ---
-    // Ini yang membedakan Gauss-Jordan dari Gauss biasa (eliminasi ke atas & bawah)
+    // --- Eliminasi Elemen di Kolom i (Atas & Bawah) ---
     for (let k = 0; k < n; k++) {
-      if (k === i) continue; // lewati baris pivot itu sendiri
+      if (k === i) continue; // Skip baris pivot itu sendiri
 
       const factor = A[k][i];
-      if (Math.abs(factor) < 1e-14) continue; // sudah nol, skip
+      if (Math.abs(factor) < 1e-14) continue; // Sudah nol, skip
 
       for (let j = 0; j < n; j++) {
         A[k][j] -= factor * A[i][j];
         Inv[k][j] -= factor * Inv[i][j];
       }
 
+      // Format label langkah OBE agar mirip dengan catatan Excel-mu
+      const sign = factor > 0 ? "-" : "+";
+      const absFactor = Math.abs(factor);
+      const factorStr =
+        absFactor === 1
+          ? ""
+          : absFactor % 1 === 0
+            ? absFactor.toFixed(0)
+            : absFactor.toFixed(2);
+
       steps.push({
-        label: `eliminasi baris ${k + 1}: b${k + 1} − (${factor % 1 === 0 ? factor.toFixed(0) : factor.toFixed(4)} × b${i + 1})`,
+        label: `operasi baris: b${k + 1} ${sign} ${factorStr}b${i + 1}`,
         matrixA: A.map((r) => [...r]),
         matrixInv: Inv.map((r) => [...r]),
       });
     }
   }
 
-  // Pada titik ini, A sudah menjadi I, dan Inv sudah menjadi A⁻¹
-
-  // === HITUNG SOLUSI: x = A⁻¹ · b ===
-  // (sesuai persamaan P.4.8 pada buku: x = A⁻¹b)
+  // === HITUNG SOLUSI AKHIR: x = A⁻¹ · b ===
   const solution = new Array(n).fill(0);
   for (let i = 0; i < n; i++) {
     for (let j = 0; j < n; j++) {

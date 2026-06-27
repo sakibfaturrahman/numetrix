@@ -36,6 +36,9 @@ interface JacobiIteration {
   galatX: number;
   galatY: number;
   galatZ: number;
+  isConvergedX: boolean;
+  isConvergedY: boolean;
+  isConvergedZ: boolean;
 }
 
 const JacobiPage = () => {
@@ -44,10 +47,9 @@ const JacobiPage = () => {
   const [error, setError] = useState<string | null>(null);
   const [iterations, setIterations] = useState<JacobiIteration[]>([]);
 
-  // State Input untuk Tebakan Awal — default 0,0,0
-  const [initialGuess, setInitialGuess] = useState({ x: 0, y: 0, z: 0 });
+  // Default nilai awal P0 sesuai pengerjaan Excel = (1, 2, 2)
+  const [initialGuess, setInitialGuess] = useState({ x: 1, y: 2, z: 2 });
 
-  // Matriks Konstan
   const matrixA = [
     [4, -1, 1],
     [4, -8, 1],
@@ -65,16 +67,16 @@ const JacobiPage = () => {
     localStorage.setItem("hasSeenJacobiGuide", "true");
   };
 
-  // Ambil data iterasi terakhir untuk summary
   const lastIter =
     iterations.length > 0 ? iterations[iterations.length - 1] : null;
+
+  // Status konvergensi total tercapai apabila komponen galat semuanya bernilai TRUE
   const isConverged =
     lastIter !== null &&
-    lastIter.galatX < 0.001 &&
-    lastIter.galatY < 0.001 &&
-    lastIter.galatZ < 0.001;
+    lastIter.isConvergedX &&
+    lastIter.isConvergedY &&
+    lastIter.isConvergedZ;
 
-  // Fungsi Fetch ke Backend API
   const calculateJacobi = async () => {
     setLoading(true);
     setError(null);
@@ -87,20 +89,20 @@ const JacobiPage = () => {
           matrixA,
           vectorB,
           initialGuess: [initialGuess.x, initialGuess.y, initialGuess.z],
-          maxIter: 20,
+          maxIter: 30,
         }),
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        setError(data.error || "Gagal melakukan lelaran Jacobi.");
+        setError(data.error || "gagal melakukan lelaran jacobi.");
         return;
       }
 
       setIterations(data);
-    } catch (err) {
-      setError("Terputus dari server. Pastikan API berjalan.");
+    } catch {
+      setError("terputus dari server. pastikan api berjalan dengan aman.");
     } finally {
       setLoading(false);
     }
@@ -113,7 +115,7 @@ const JacobiPage = () => {
   };
 
   return (
-    <div className="antialiased bg-[#f2f2f2] min-h-screen font-sans selection:bg-orange-100 selection:text-orange-900">
+    <div className="antialiased bg-[#f2f2f2] min-h-screen font-sans selection:bg-orange-100 selection:text-orange-900 lowercase">
       <Navbar />
 
       <GuideModal
@@ -144,7 +146,7 @@ const JacobiPage = () => {
           </div>
 
           {/* HERO SECTION */}
-          <section className="bg-white rounded-[40px] md:rounded-[50px] p-8 md:p-16 border border-gray-100 shadow-2xl mb-8 overflow-hidden lowercase">
+          <section className="bg-white rounded-[40px] md:rounded-[50px] p-8 md:p-16 border border-gray-100 shadow-2xl mb-8 overflow-hidden">
             <div className="flex flex-col md:flex-row justify-between items-center gap-12">
               <div className="max-w-xl flex-1">
                 <motion.span
@@ -161,7 +163,8 @@ const JacobiPage = () => {
                 <p className="text-gray-400 text-sm md:text-base leading-relaxed">
                   selesaikan sistem persamaan linear dengan teknik lelaran
                   (iterasi). metode ini memperbarui nilai variabel secara
-                  simultan pada setiap langkah hingga mencapai konvergensi.
+                  simultan pada setiap langkah hingga mencapai konvergensi
+                  murni.
                 </p>
               </div>
 
@@ -179,7 +182,7 @@ const JacobiPage = () => {
             </div>
           </section>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lowercase">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* INPUT PERSAMAAN & TEBAKAN AWAL */}
             <Card className="lg:col-span-2 p-8 md:p-12 rounded-[40px] border-none shadow-xl bg-white flex flex-col gap-10">
               <div className="flex justify-between items-center">
@@ -188,7 +191,7 @@ const JacobiPage = () => {
                     persamaan lelaran.
                   </h2>
                   <p className="text-xs text-gray-400">
-                    masukkan fungsi x, y, dan z untuk iterasi.
+                    transformasi matriks [A] ke fungsi lelaran numerik.
                   </p>
                 </div>
                 <Button
@@ -207,30 +210,30 @@ const JacobiPage = () => {
                     <span className="text-[10px] font-bold text-gray-300 uppercase block mb-2 tracking-widest text-center">
                       fungsi x
                     </span>
-                    <p className="font-mono text-sm text-center tracking-tighter">
-                      x = (7 + y - z) / 4
+                    <p className="font-mono text-xs text-center tracking-tighter font-bold text-orange-600">
+                      x = (7 + y − z) / 4
                     </p>
                   </div>
                   <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100">
                     <span className="text-[10px] font-bold text-gray-300 uppercase block mb-2 tracking-widest text-center">
                       fungsi y
                     </span>
-                    <p className="font-mono text-sm text-center tracking-tighter">
-                      y = (-21 - 4x - z) / -8
+                    <p className="font-mono text-xs text-center tracking-tighter font-bold text-orange-600">
+                      y = (−21 − 4x − z) / −8
                     </p>
                   </div>
                   <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100">
                     <span className="text-[10px] font-bold text-gray-300 uppercase block mb-2 tracking-widest text-center">
                       fungsi z
                     </span>
-                    <p className="font-mono text-sm text-center tracking-tighter">
-                      z = (15 + 2x - y) / 5
+                    <p className="font-mono text-xs text-center tracking-tighter font-bold text-orange-600">
+                      z = (15 + 2x − y) / 5
                     </p>
                   </div>
                 </div>
 
                 <div className="pt-6">
-                  <h3 className="text-sm font-bold mb-4 tracking-tighter italic">
+                  <h3 className="text-xs font-bold uppercase mb-4 tracking-wider text-gray-400">
                     tebakan awal (p₀):
                   </h3>
                   <div className="flex gap-4">
@@ -259,7 +262,7 @@ const JacobiPage = () => {
               <Button
                 onClick={calculateJacobi}
                 disabled={loading}
-                className="w-full py-8 bg-black text-white rounded-[25px] text-xs font-bold uppercase tracking-[0.2em] hover:bg-orange-700 transition-all flex gap-3 group"
+                className="w-full py-8 bg-black text-white rounded-[25px] text-xs font-bold uppercase tracking-[0.2em] hover:bg-orange-700 transition-all flex gap-3 group border-none"
               >
                 {loading ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -282,13 +285,13 @@ const JacobiPage = () => {
                   syarat konvergensi.
                 </h3>
                 <p className="text-xs text-gray-500 leading-relaxed italic">
-                  agar lelaran jacobi mencapai solusi sejati{" "}
+                  agar lelaran mencapai solusi sejati{" "}
                   <span className="text-white font-bold">(2, 4, 3)</span>,
-                  matriks koefisien harus dominan secara diagonal.
+                  pengujian selisih nilai mutlak tiap variabel dihitung ketat
+                  terhadap batas epsilon.
                 </p>
               </div>
 
-              {/* Summary hasil iterasi — tampil setelah ada data */}
               <AnimatePresence>
                 {lastIter && (
                   <motion.div
@@ -299,7 +302,7 @@ const JacobiPage = () => {
                     className="mt-6 pt-5 border-t border-white/10 relative z-10 space-y-3"
                   >
                     <p className="text-[9px] text-gray-500 tracking-widest uppercase font-bold mb-2">
-                      hasil iterasi ke-{lastIter.iterasi}:
+                      hasil akhir lelaran ke-{lastIter.iterasi}:
                     </p>
                     {[
                       { label: "x", val: lastIter.x },
@@ -323,11 +326,9 @@ const JacobiPage = () => {
                         className={`w-4 h-4 ${isConverged ? "text-green-400" : "text-gray-600"}`}
                       />
                       <span
-                        className={`text-[10px] font-bold tracking-wide ${
-                          isConverged ? "text-green-400" : "text-gray-500"
-                        }`}
+                        className={`text-[10px] font-bold tracking-wide ${isConverged ? "text-green-400" : "text-gray-500"}`}
                       >
-                        {isConverged ? "konvergen ✓" : "belum konvergen"}
+                        {isConverged ? "status konvergen ✓" : "belum konvergen"}
                       </span>
                     </div>
                   </motion.div>
@@ -336,65 +337,62 @@ const JacobiPage = () => {
 
               <div className="mt-8 pt-6 border-t border-white/5 relative z-10">
                 <p className="text-[9px] text-gray-500 mb-4 tracking-widest uppercase font-bold">
-                  toleransi galat (ε):
+                  toleransi galat murni (e):
                 </p>
-                <div className="flex items-center gap-3">
-                  <span className="text-xl font-mono font-bold tracking-tighter text-orange-400">
-                    0.00001
-                  </span>
-                </div>
+                <span className="text-lg font-mono font-bold text-orange-400 tracking-tighter">
+                  0.000000001 (1e-9)
+                </span>
               </div>
               <div className="absolute -right-16 -bottom-16 w-56 h-56 bg-orange-500/10 blur-[90px] rounded-full"></div>
             </Card>
           </div>
 
-          {/* TABEL ITERASI */}
+          {/* TABEL ITERASI DENGAN OUTPUT TRUE / FALSE INDEPENDEN */}
           <section className="mt-12">
             <div className="flex items-center gap-4 mb-8">
               <div className="flex items-center gap-2">
                 <ListOrdered className="w-5 h-5 text-black" />
-                <h2 className="text-xl font-bold tracking-tighter lowercase">
-                  tabel iterasi.
+                <h2 className="text-xl font-bold tracking-tighter">
+                  tabel lelaran numerik.
                 </h2>
               </div>
               <div className="h-[1px] flex-1 bg-gray-200"></div>
-              {/* Badge jumlah iterasi */}
               {iterations.length > 0 && (
                 <motion.span
                   initial={{ opacity: 0, scale: 0.8 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  className="px-3 py-1 bg-black text-white text-[10px] font-bold tracking-widest rounded-full uppercase"
+                  className="px-4 py-1.5 bg-black text-white text-[10px] font-bold tracking-widest rounded-full uppercase"
                 >
-                  {iterations.length - 1} lelaran
+                  {iterations.length - 1} lelaran selesai
                 </motion.span>
               )}
             </div>
 
             <Card className="rounded-[35px] border-none shadow-xl overflow-hidden bg-white">
-              <div className="max-h-[600px] overflow-y-auto">
+              <div className="max-h-[650px] overflow-y-auto">
                 <Table>
-                  <TableHeader className="bg-gray-50/50 sticky top-0 backdrop-blur-md z-20">
+                  <TableHeader className="bg-gray-50/80 sticky top-0 backdrop-blur-md z-20">
                     <TableRow className="border-none">
-                      <TableHead className="text-center font-bold text-[10px] uppercase tracking-widest py-6">
+                      <TableHead className="text-center font-bold text-[10px] uppercase tracking-wider py-5">
                         iterasi
                       </TableHead>
-                      <TableHead className="text-center font-bold text-[10px] uppercase tracking-widest py-6">
+                      <TableHead className="text-center font-bold text-[10px] uppercase tracking-wider py-5">
                         x
                       </TableHead>
-                      <TableHead className="text-center font-bold text-[10px] uppercase tracking-widest py-6">
+                      <TableHead className="text-center font-bold text-[10px] uppercase tracking-wider py-5">
                         y
                       </TableHead>
-                      <TableHead className="text-center font-bold text-[10px] uppercase tracking-widest py-6">
+                      <TableHead className="text-center font-bold text-[10px] uppercase tracking-wider py-5">
                         z
                       </TableHead>
-                      <TableHead className="text-center font-bold text-[10px] uppercase tracking-widest py-6">
-                        galat x (%)
+                      <TableHead className="text-center font-bold text-[10px] uppercase tracking-wider py-5 text-orange-600">
+                        galat x
                       </TableHead>
-                      <TableHead className="text-center font-bold text-[10px] uppercase tracking-widest py-6">
-                        galat y (%)
+                      <TableHead className="text-center font-bold text-[10px] uppercase tracking-wider py-5 text-orange-600">
+                        galat y
                       </TableHead>
-                      <TableHead className="text-center font-bold text-[10px] uppercase tracking-widest py-6">
-                        galat z (%)
+                      <TableHead className="text-center font-bold text-[10px] uppercase tracking-wider py-5 text-orange-600">
+                        galat z
                       </TableHead>
                     </TableRow>
                   </TableHeader>
@@ -404,55 +402,77 @@ const JacobiPage = () => {
                         iterations.map((row, idx) => (
                           <motion.tr
                             key={row.iterasi}
-                            initial={{ opacity: 0, y: 10 }}
+                            initial={{ opacity: 0, y: 8 }}
                             animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: idx * 0.05 }}
-                            className="hover:bg-orange-50/30 transition-colors border-b border-gray-50"
+                            transition={{ delay: idx * 0.02 }}
+                            className="hover:bg-orange-50/20 border-b border-gray-50 transition-colors"
                           >
-                            <TableCell className="text-center font-bold text-gray-300 py-4">
+                            <TableCell className="text-center font-bold text-gray-400 py-3.5">
                               {row.iterasi}
                             </TableCell>
-                            <TableCell className="text-center font-mono font-bold py-4 text-black">
+                            <TableCell className="text-center font-mono font-bold text-sm py-3.5 text-black">
                               {row.x.toFixed(6)}
                             </TableCell>
-                            <TableCell className="text-center font-mono font-bold py-4 text-black">
+                            <TableCell className="text-center font-mono font-bold text-sm py-3.5 text-black">
                               {row.y.toFixed(6)}
                             </TableCell>
-                            <TableCell className="text-center font-mono font-bold py-4 text-black">
+                            <TableCell className="text-center font-mono font-bold text-sm py-3.5 text-black">
                               {row.z.toFixed(6)}
                             </TableCell>
-                            <TableCell className="text-center py-4">
-                              <span
-                                className={`text-[10px] font-mono font-bold px-2 py-1 rounded-lg ${
-                                  row.galatX < 0.001
-                                    ? "text-green-600 bg-green-50"
-                                    : "text-orange-500 bg-orange-50"
-                                }`}
-                              >
-                                {row.galatX.toFixed(4)}%
-                              </span>
+
+                            {/* Render Badge Status TRUE / FALSE Independen per komponen lelaran */}
+                            <TableCell className="text-center py-3.5">
+                              {row.iterasi === 0 ? (
+                                <span className="text-gray-300 font-mono text-[10px] font-bold">
+                                  -
+                                </span>
+                              ) : (
+                                <span
+                                  className={`text-[10px] font-mono font-black px-2.5 py-1 rounded-md tracking-wider ${
+                                    row.isConvergedX
+                                      ? "bg-green-100 text-green-700"
+                                      : "bg-red-50 text-red-500"
+                                  }`}
+                                >
+                                  {row.isConvergedX ? "TRUE" : "FALSE"}
+                                </span>
+                              )}
                             </TableCell>
-                            <TableCell className="text-center py-4">
-                              <span
-                                className={`text-[10px] font-mono font-bold px-2 py-1 rounded-lg ${
-                                  row.galatY < 0.001
-                                    ? "text-green-600 bg-green-50"
-                                    : "text-orange-500 bg-orange-50"
-                                }`}
-                              >
-                                {row.galatY.toFixed(4)}%
-                              </span>
+
+                            <TableCell className="text-center py-3.5">
+                              {row.iterasi === 0 ? (
+                                <span className="text-gray-300 font-mono text-[10px] font-bold">
+                                  -
+                                </span>
+                              ) : (
+                                <span
+                                  className={`text-[10px] font-mono font-black px-2.5 py-1 rounded-md tracking-wider ${
+                                    row.isConvergedY
+                                      ? "bg-green-100 text-green-700"
+                                      : "bg-red-50 text-red-500"
+                                  }`}
+                                >
+                                  {row.isConvergedY ? "TRUE" : "FALSE"}
+                                </span>
+                              )}
                             </TableCell>
-                            <TableCell className="text-center py-4">
-                              <span
-                                className={`text-[10px] font-mono font-bold px-2 py-1 rounded-lg ${
-                                  row.galatZ < 0.001
-                                    ? "text-green-600 bg-green-50"
-                                    : "text-orange-500 bg-orange-50"
-                                }`}
-                              >
-                                {row.galatZ.toFixed(4)}%
-                              </span>
+
+                            <TableCell className="text-center py-3.5">
+                              {row.iterasi === 0 ? (
+                                <span className="text-gray-300 font-mono text-[10px] font-bold">
+                                  -
+                                </span>
+                              ) : (
+                                <span
+                                  className={`text-[10px] font-mono font-black px-2.5 py-1 rounded-md tracking-wider ${
+                                    row.isConvergedZ
+                                      ? "bg-green-100 text-green-700"
+                                      : "bg-red-50 text-red-500"
+                                  }`}
+                                >
+                                  {row.isConvergedZ ? "TRUE" : "FALSE"}
+                                </span>
+                              )}
                             </TableCell>
                           </motion.tr>
                         ))
@@ -460,9 +480,10 @@ const JacobiPage = () => {
                         <TableRow>
                           <TableCell
                             colSpan={7}
-                            className="text-center py-20 text-gray-400 italic"
+                            className="text-center py-24 text-gray-400 italic"
                           >
-                            klik tombol di atas untuk melihat proses lelaran...
+                            silakan isi tebakan awal di atas lalu eksekusi
+                            tombol untuk memetakan status lelaran jacobi...
                           </TableCell>
                         </TableRow>
                       )}

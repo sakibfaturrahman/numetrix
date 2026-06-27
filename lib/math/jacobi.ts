@@ -8,19 +8,27 @@ export interface JacobiIteration {
   galatX: number;
   galatY: number;
   galatZ: number;
+  isConvergedX: boolean;
+  isConvergedY: boolean;
+  isConvergedZ: boolean;
 }
 
+/**
+ * Menyelesaikan SPL dengan Metode Lelaran Jacobi.
+ * Dipastikan berhenti tepat saat seluruh elemen memenuhi toleransi (Eksak indeks 0-19 sesuai Excel).
+ */
 export function solveJacobi(
   A: number[][],
   b: number[],
   initialGuess: number[],
-  tolerance: number = 0.0001,
+  tolerance: number = 0.000000001,
   maxIter: number = 50,
-) {
+): JacobiIteration[] {
   let x = [...initialGuess];
   const n = b.length;
   const history: JacobiIteration[] = [];
 
+  // Iterasi awal (0) -> p0 = (1, 2, 2)
   history.push({
     iterasi: 0,
     x: x[0],
@@ -29,11 +37,15 @@ export function solveJacobi(
     galatX: 0,
     galatY: 0,
     galatZ: 0,
+    isConvergedX: false,
+    isConvergedY: false,
+    isConvergedZ: false,
   });
 
   for (let k = 0; k < maxIter; k++) {
     const xNext = new Array(n).fill(0);
 
+    // Hitung lelaran baru secara simultan (serentak)
     for (let i = 0; i < n; i++) {
       let sigma = 0;
       for (let j = 0; j < n; j++) {
@@ -44,25 +56,38 @@ export function solveJacobi(
       xNext[i] = (b[i] - sigma) / A[i][i];
     }
 
-  
-    const gX = x[0] !== 0 ? Math.abs((xNext[0] - x[0]) / x[0]) * 100 : 100;
-    const gY = x[1] !== 0 ? Math.abs((xNext[1] - x[1]) / x[1]) * 100 : 100;
-    const gZ = x[2] !== 0 ? Math.abs((xNext[2] - x[2]) / x[2]) * 100 : 100;
+    // Hitung Galat Mutlak Selisih (|x_baru - x_lama|)
+    const gX = Math.abs(xNext[0] - x[0]);
+    const gY = Math.abs(xNext[1] - x[1]);
+    const gZ = Math.abs(xNext[2] - x[2]);
 
+    // Evaluasi kecukupan kriteria galat terhadap epsilon (e < 1e-9)
+    const isConvX = gX < tolerance;
+    const isConvY = gY < tolerance;
+    const isConvZ = gZ < tolerance;
+
+    // Perbarui nilai x lama dengan x baru untuk lelaran berikutnya
     x = [...xNext];
 
+    // Masukkan data lelaran ke dalam history log berkala
     history.push({
       iterasi: k + 1,
       x: x[0],
       y: x[1],
       z: x[2],
-      galatX: isFinite(gX) ? gX : 100,
-      galatY: isFinite(gY) ? gY : 100,
-      galatZ: isFinite(gZ) ? gZ : 100,
+      galatX: gX,
+      galatY: gY,
+      galatZ: gZ,
+      isConvergedX: isConvX,
+      isConvergedY: isConvY,
+      isConvergedZ: isConvZ,
     });
 
-    // Cek konvergensi (berhenti jika galat sudah di bawah toleransi)
-    if (Math.max(gX, gY, gZ) < tolerance) break;
+    // CRITICAL BREAK: Berhenti total jika komponen x, y, dan z sudah TRUE semua.
+    // Ini mengunci perulangan agar baris k+1 (lelaran 19) menjadi baris final penutup tabel.
+    if (isConvX && isConvY && isConvZ) {
+      break;
+    }
   }
 
   return history;
