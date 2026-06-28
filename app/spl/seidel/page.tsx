@@ -8,8 +8,6 @@ import Footer from "@/components/layouts/footer";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { GuideModal } from "@/components/common/guide-modal";
-import { ErrorMessage } from "@/components/common/error-message";
 import {
   Table,
   TableBody,
@@ -18,16 +16,19 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { GuideModal } from "@/components/common/guide-modal";
+import { ErrorMessage } from "@/components/common/error-message";
 import {
   RotateCcw,
   Play,
-  Zap,
-  ListChecks,
+  Activity,
+  ListOrdered,
   HelpCircle,
   Loader2,
   CheckCircle2,
 } from "lucide-react";
 
+// Interface harus sama persis dengan yang dikirim dari backend
 interface GaussSeidelIteration {
   iterasi: number;
   x: number;
@@ -36,17 +37,21 @@ interface GaussSeidelIteration {
   galatX: number;
   galatY: number;
   galatZ: number;
+  isConvergedX: boolean;
+  isConvergedY: boolean;
+  isConvergedZ: boolean;
 }
-
-const TOLERANCE = 0.00001;
 
 const GaussSeidelPage = () => {
   const [showGuide, setShowGuide] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [iterations, setIterations] = useState<GaussSeidelIteration[]>([]);
-  const [initialValue, setInitialValue] = useState({ x: 0, y: 0, z: 0 });
 
+  // Default tebakan awal P0 = (1, 2, 2) sesuai pengerjaan Excel kamu
+  const [initialGuess, setInitialGuess] = useState({ x: 1, y: 2, z: 2 });
+
+  // Matriks SPL Sesuai Gambar Excel
   const matrixA = [
     [4, -1, 1],
     [4, -8, 1],
@@ -64,57 +69,68 @@ const GaussSeidelPage = () => {
     localStorage.setItem("hasSeenSeidelGuide", "true");
   };
 
-  // Ambil data iterasi terakhir untuk summary panel
   const lastIter =
     iterations.length > 0 ? iterations[iterations.length - 1] : null;
+
+  // Cek apakah seluruh variabel sudah mencapai status konvergen murni
   const isConverged =
     lastIter !== null &&
-    lastIter.galatX < TOLERANCE * 100 &&
-    lastIter.galatY < TOLERANCE * 100 &&
-    lastIter.galatZ < TOLERANCE * 100;
+    lastIter.isConvergedX &&
+    lastIter.isConvergedY &&
+    lastIter.isConvergedZ;
 
-  const calculateGaussSeidel = async () => {
+  const calculateSeidel = async () => {
     setLoading(true);
     setError(null);
     setIterations([]);
     try {
-      const response = await fetch("/api/spl/=seidel", {
+      // UBAH BAGIAN URL INI MENJADI /api/spl/seidel
+      const response = await fetch("/api/spl/seidel", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           matrixA,
           vectorB,
-          initialGuess: [initialValue.x, initialValue.y, initialValue.z],
-          maxIter: 20,
+          initialGuess: [initialGuess.x, initialGuess.y, initialGuess.z],
+          maxIter: 30,
         }),
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        setError(data.error || "Gagal melakukan lelaran Gauss-Seidel.");
+        // Tangkap error dari backend jika ada masalah (contoh: 404 Not Found / 500 Server Error)
+        console.error("Backend Error:", data);
+        setError(
+          data.error || `Gagal mengambil data. Status: ${response.status}`,
+        );
         return;
       }
 
+      // Memastikan data yang diterima adalah array (mencegah blank/error map)
+      if (!Array.isArray(data)) {
+        throw new Error(
+          "Format respons dari server tidak valid (bukan array).",
+        );
+      }
+
       setIterations(data);
-    } catch {
-      setError("Terputus dari server. Pastikan API berjalan.");
+    } catch (err: unknown) {
+      const msg =
+        err instanceof Error
+          ? err.message
+          : "Terputus dari server. Pastikan rute API sudah benar.";
+      console.error("Fetch Error:", msg);
+      setError(msg);
     } finally {
       setLoading(false);
     }
   };
 
   const resetInput = () => {
-    setInitialValue({ x: 0, y: 0, z: 0 });
+    setInitialGuess({ x: 1, y: 2, z: 2 });
     setIterations([]);
     setError(null);
-  };
-
-  // Konversi galat angka → label TRUE/FALSE sesuai UI asli
-  // TRUE = galat sudah di bawah toleransi (konvergen), FALSE = belum
-  const galatLabel = (galat: number, iterasi: number): string | null => {
-    if (iterasi === 0) return null;
-    return galat < TOLERANCE * 100 ? "TRUE" : "FALSE";
   };
 
   return (
@@ -124,13 +140,13 @@ const GaussSeidelPage = () => {
       <GuideModal
         isOpen={showGuide}
         onOpenChange={setShowGuide}
-        title="panduan lelaran seidel"
-        description="pahami mekanisme pembaruan simultan pada metode gauss-seidel."
-        theoryOverview="berbeda dengan jacobi, seidel langsung menggunakan nilai x terbaru untuk menghitung y di iterasi yang sama. hal ini membuat konvergensi jauh lebih cepat."
+        title="panduan lelaran gauss-seidel"
+        description="pahami mekanisme iterasi sekuensial sebelum menjalankan simulasi."
+        theoryOverview="berbeda dengan jacobi, gauss-seidel langsung menggunakan nilai variabel baru yang terhitung di baris yang sama untuk menghitung variabel berikutnya. hal ini membuat konvergensi jauh lebih cepat."
         steps={[
-          "masukkan tebakan awal (p₀) pada kolom x, y, dan z.",
-          "atur toleransi galat (ε) jika diperlukan (default 0.000001).",
-          "klik 'eksekusi lelaran' untuk melihat tabel konvergensi hingga mencapai solusi sejati.",
+          "masukkan tebakan awal (p₀) untuk memulai lelaran pertama.",
+          "perhatikan fungsi lelaran sekuensial dari persamaan spl asli.",
+          "klik 'mulai lelaran' untuk melihat hasil konvergensi sejati pada tabel.",
         ]}
         onClose={handleCloseGuide}
       />
@@ -149,7 +165,7 @@ const GaussSeidelPage = () => {
           </div>
 
           {/* HERO SECTION */}
-          <section className="bg-white rounded-[40px] md:rounded-[50px] p-8 md:p-16 border border-gray-100 shadow-2xl mb-8 overflow-hidden lowercase">
+          <section className="bg-white rounded-[40px] md:rounded-[50px] p-8 md:p-16 border border-gray-100 shadow-2xl mb-8 overflow-hidden">
             <div className="flex flex-col md:flex-row justify-between items-center gap-12">
               <div className="max-w-xl flex-1">
                 <motion.span
@@ -161,20 +177,21 @@ const GaussSeidelPage = () => {
                 </motion.span>
                 <h1 className="text-4xl md:text-6xl font-bold tracking-tighter text-black leading-tight mb-6">
                   konvergensi <span className="text-gray-300">cepat</span>{" "}
-                  <br /> lelaran gauss-seidel.
+                  <br /> lelaran sekuensial.
                 </h1>
-                <p className="text-gray-400 text-sm md:text-base leading-relaxed lowercase">
-                  metode iteratif yang lebih efisien karena langsung menggunakan
-                  nilai variabel terbaru dalam satu siklus iterasi yang sama.
-                  mempercepat proses pencarian solusi sejati.
+                <p className="text-gray-400 text-sm md:text-base leading-relaxed">
+                  selesaikan sistem persamaan linear secara efisien. metode ini
+                  langsung mensubstitusikan nilai variabel terbaru pada iterasi
+                  yang sama, mempercepat pencapaian solusi eksak.
                 </p>
               </div>
 
               <motion.div className="w-full md:w-[350px] flex justify-center items-center">
                 <div className="relative w-full aspect-square">
+                  {/* Pastikan gambar ini ada di public/images/ atau ganti path jika perlu */}
                   <Image
-                    src="/images/Taking notes-bro.svg"
-                    alt="Illustration"
+                    src="/images/Mathematics-pana.svg"
+                    alt="Gauss Seidel Illustration"
                     fill
                     priority
                     className="object-contain drop-shadow-2xl"
@@ -184,119 +201,115 @@ const GaussSeidelPage = () => {
             </div>
           </section>
 
-          {/* INPUT & INFO SECTION */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* INPUT PERSAMAAN & TEBAKAN AWAL */}
             <Card className="lg:col-span-2 p-8 md:p-12 rounded-[40px] border-none shadow-xl bg-white flex flex-col gap-10">
               <div className="flex justify-between items-center">
                 <div>
-                  <h2 className="text-xl font-bold tracking-tight text-emerald-600">
-                    persamaan seidel.
+                  <h2 className="text-xl font-bold tracking-tight">
+                    persamaan lelaran seidel.
                   </h2>
-                  <p className="text-xs text-gray-400 font-bold uppercase tracking-widest">
-                    input nilai awal p₀
+                  <p className="text-xs text-gray-400">
+                    substitusi berantai langsung dari variabel ter-update.
                   </p>
                 </div>
                 <Button
                   variant="ghost"
                   size="icon"
                   onClick={resetInput}
-                  className="rounded-full hover:bg-gray-100 group"
+                  className="rounded-full hover:bg-red-50 group"
                 >
                   <RotateCcw className="w-4 h-4 text-gray-400 group-hover:text-red-500 transition-colors" />
                 </Button>
               </div>
 
-              {/* Grid Rumus */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {[
-                  { label: "x", formula: "(7 + y - z) / 4" },
-                  { label: "y", formula: "(-21 - 4x - z) / -8" },
-                  { label: "z", formula: "(15 + 2x - y) / 5" },
-                ].map((item) => (
-                  <div
-                    key={item.label}
-                    className="p-5 bg-gray-50 rounded-3xl border border-gray-100 flex flex-col gap-2 shadow-sm"
-                  >
-                    <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest">
-                      fungsi {item.label}
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100">
+                    <span className="text-[10px] font-bold text-gray-300 uppercase block mb-2 tracking-widest text-center">
+                      fungsi x
                     </span>
-                    <code className="text-xs font-mono font-bold text-black">
-                      {item.label} = {item.formula}
-                    </code>
+                    <p className="font-mono text-xs text-center tracking-tighter font-bold text-emerald-600">
+                      x = (7 + y − z) / 4
+                    </p>
                   </div>
-                ))}
-              </div>
-
-              {/* Input Awal */}
-              <div className="flex gap-4">
-                {["x", "y", "z"].map((axis) => (
-                  <div key={axis} className="flex-1">
-                    <label className="text-[10px] font-bold text-gray-300 uppercase mb-2 block tracking-widest text-center">
-                      {axis}₀
-                    </label>
-                    <Input
-                      type="number"
-                      value={initialValue[axis as keyof typeof initialValue]}
-                      onChange={(e) =>
-                        setInitialValue({
-                          ...initialValue,
-                          [axis]: parseFloat(e.target.value) || 0,
-                        })
-                      }
-                      className="rounded-2xl border-none bg-gray-50 text-center font-bold text-lg h-14 focus-visible:ring-emerald-500 shadow-inner"
-                    />
+                  <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100">
+                    <span className="text-[10px] font-bold text-gray-300 uppercase block mb-2 tracking-widest text-center">
+                      fungsi y
+                    </span>
+                    <p className="font-mono text-xs text-center tracking-tighter font-bold text-emerald-600">
+                      y = (−21 − 4x − z) / −8
+                    </p>
                   </div>
-                ))}
-              </div>
+                  <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100">
+                    <span className="text-[10px] font-bold text-gray-300 uppercase block mb-2 tracking-widest text-center">
+                      fungsi z
+                    </span>
+                    <p className="font-mono text-xs text-center tracking-tighter font-bold text-emerald-600">
+                      z = (15 + 2x − y) / 5
+                    </p>
+                  </div>
+                </div>
 
-              <Button
-                onClick={calculateGaussSeidel}
-                disabled={loading}
-                className="w-full py-8 bg-black text-white rounded-[30px] text-xs font-bold uppercase tracking-[0.2em] hover:bg-emerald-800 transition-all flex gap-3 group shadow-lg active:scale-95 border-none"
-              >
-                {loading ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <>
-                    eksekusi lelaran seidel
-                    <Zap className="w-4 h-4 text-emerald-400 fill-emerald-400 group-hover:scale-125 transition-transform" />
-                  </>
-                )}
-              </Button>
-            </Card>
-
-            {/* INFO PANEL */}
-            <Card className="p-8 md:p-10 rounded-[40px] border-none shadow-xl bg-[#080808] text-white flex flex-col justify-between overflow-hidden relative">
-              <div className="relative z-10">
-                <h3 className="text-lg font-bold mb-6 text-emerald-400 lowercase">
-                  mekanisme update.
-                </h3>
-                <div className="space-y-4">
-                  <p className="text-xs text-gray-400 leading-relaxed italic">
-                    seidel menggunakan nilai{" "}
-                    <span className="text-white font-bold">x⁽ᵏ⁺¹⁾</span> yang
-                    baru dihitung untuk mencari{" "}
-                    <span className="text-white font-bold">y⁽ᵏ⁺¹⁾</span> pada
-                    iterasi yang sama.
-                  </p>
-                  <div className="h-[1px] w-full bg-white/5"></div>
-                  <p className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">
-                    target solusi sejati:
-                  </p>
-                  <div className="flex gap-2">
-                    {["2", "4", "3"].map((n) => (
-                      <div
-                        key={n}
-                        className="px-3 py-1 bg-white/5 rounded-lg border border-white/5 font-mono text-emerald-400 font-bold"
-                      >
-                        {n}
+                <div className="pt-6">
+                  <h3 className="text-xs font-bold uppercase mb-4 tracking-wider text-gray-400">
+                    tebakan awal (p₀):
+                  </h3>
+                  <div className="flex gap-4">
+                    {["x", "y", "z"].map((axis) => (
+                      <div key={axis} className="flex-1">
+                        <Input
+                          type="number"
+                          placeholder={`${axis}₀`}
+                          className="rounded-xl border-none bg-gray-50 text-center font-bold focus-visible:ring-emerald-500"
+                          value={
+                            initialGuess[axis as keyof typeof initialGuess]
+                          }
+                          onChange={(e) =>
+                            setInitialGuess({
+                              ...initialGuess,
+                              [axis]: parseFloat(e.target.value) || 0,
+                            })
+                          }
+                        />
                       </div>
                     ))}
                   </div>
                 </div>
               </div>
 
-              {/* Summary hasil — muncul setelah ada data */}
+              <Button
+                onClick={calculateSeidel}
+                disabled={loading}
+                className="w-full py-8 bg-black text-white rounded-[25px] text-xs font-bold uppercase tracking-[0.2em] hover:bg-emerald-700 transition-all flex gap-3 group border-none"
+              >
+                {loading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <>
+                    mulai lelaran gauss-seidel
+                    <Play className="w-3 h-3 fill-current group-hover:translate-x-1 transition-transform" />
+                  </>
+                )}
+              </Button>
+            </Card>
+
+            {/* INFO PANEL KONVERGENSI */}
+            <Card className="p-8 md:p-10 rounded-[40px] border-none shadow-xl bg-[#0d0d0d] text-white flex flex-col justify-between overflow-hidden relative">
+              <div className="relative z-10">
+                <div className="w-12 h-12 bg-emerald-500/20 rounded-2xl flex items-center justify-center mb-6">
+                  <Activity className="w-6 h-6 text-emerald-500" />
+                </div>
+                <h3 className="text-lg font-bold mb-4 text-emerald-400">
+                  evaluasi seidel.
+                </h3>
+                <p className="text-xs text-gray-500 leading-relaxed italic">
+                  karena konvergensinya sekuensial, galat meluncur turun jauh
+                  lebih cepat daripada jacobi menuju solusi sejati{" "}
+                  <span className="text-white font-bold">(2, 4, 3)</span>.
+                </p>
+              </div>
+
               <AnimatePresence>
                 {lastIter && (
                   <motion.div
@@ -307,7 +320,7 @@ const GaussSeidelPage = () => {
                     className="mt-6 pt-5 border-t border-white/10 relative z-10 space-y-3"
                   >
                     <p className="text-[9px] text-gray-500 tracking-widest uppercase font-bold mb-2">
-                      hasil iterasi ke-{lastIter.iterasi}:
+                      hasil akhir lelaran ke-{lastIter.iterasi}:
                     </p>
                     {[
                       { label: "x", val: lastIter.x },
@@ -322,76 +335,81 @@ const GaussSeidelPage = () => {
                           {label} =
                         </span>
                         <span className="text-sm font-mono font-bold text-emerald-400">
-                          {val.toFixed(6)}
+                          {val.toFixed(4)}
                         </span>
                       </div>
                     ))}
                     <div className="flex items-center gap-2 pt-2">
                       <CheckCircle2
-                        className={`w-4 h-4 ${isConverged ? "text-emerald-400" : "text-gray-600"}`}
+                        className={`w-4 h-4 ${isConverged ? "text-green-400" : "text-gray-600"}`}
                       />
                       <span
-                        className={`text-[10px] font-bold tracking-wide ${
-                          isConverged ? "text-emerald-400" : "text-gray-500"
-                        }`}
+                        className={`text-[10px] font-bold tracking-wide ${isConverged ? "text-green-400" : "text-gray-500"}`}
                       >
-                        {isConverged ? "konvergen ✓" : "belum konvergen"}
+                        {isConverged ? "status konvergen ✓" : "belum konvergen"}
                       </span>
                     </div>
                   </motion.div>
                 )}
               </AnimatePresence>
 
+              <div className="mt-8 pt-6 border-t border-white/5 relative z-10">
+                <p className="text-[9px] text-gray-500 mb-4 tracking-widest uppercase font-bold">
+                  toleransi galat mutlak (e):
+                </p>
+                <span className="text-lg font-mono font-bold text-emerald-400 tracking-tighter">
+                  0.000001 (1e-6)
+                </span>
+              </div>
               <div className="absolute -right-16 -bottom-16 w-56 h-56 bg-emerald-500/10 blur-[90px] rounded-full"></div>
             </Card>
           </div>
 
-          {/* TABEL HASIL ITERASI */}
+          {/* TABEL ITERASI DENGAN TRUE / FALSE */}
           <section className="mt-12">
             <div className="flex items-center gap-4 mb-8">
               <div className="flex items-center gap-2">
-                <ListChecks className="w-5 h-5 text-emerald-600" />
+                <ListOrdered className="w-5 h-5 text-black" />
                 <h2 className="text-xl font-bold tracking-tighter">
-                  tabel konvergensi seidel.
+                  tabel lelaran seidel.
                 </h2>
               </div>
               <div className="h-[1px] flex-1 bg-gray-200"></div>
-              {/* Badge jumlah lelaran */}
               {iterations.length > 0 && (
                 <motion.span
                   initial={{ opacity: 0, scale: 0.8 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  className="px-3 py-1 bg-emerald-600 text-white text-[10px] font-bold tracking-widest rounded-full uppercase"
+                  className="px-4 py-1.5 bg-black text-white text-[10px] font-bold tracking-widest rounded-full uppercase"
                 >
-                  {iterations.length - 1} lelaran
+                  {iterations.length - 1} lelaran selesai
                 </motion.span>
               )}
             </div>
 
-            <Card className="rounded-[40px] border-none shadow-xl overflow-hidden bg-white">
-              <div className="max-h-[500px] overflow-y-auto">
+            <Card className="rounded-[35px] border-none shadow-xl overflow-hidden bg-white">
+              <div className="max-h-[650px] overflow-y-auto">
                 <Table>
-                  <TableHeader className="bg-gray-50/80 sticky top-0 backdrop-blur-md">
+                  <TableHeader className="bg-gray-50/80 sticky top-0 backdrop-blur-md z-20">
                     <TableRow className="border-none">
-                      <TableHead className="text-center font-bold text-[10px] uppercase tracking-widest py-6">
+                      <TableHead className="text-center font-bold text-[10px] uppercase tracking-wider py-5">
                         iterasi
                       </TableHead>
-                      <TableHead className="text-center font-bold text-[10px] uppercase tracking-widest py-6">
+                      <TableHead className="text-center font-bold text-[10px] uppercase tracking-wider py-5">
                         x
                       </TableHead>
-                      <TableHead className="text-center font-bold text-[10px] uppercase tracking-widest py-6">
+                      <TableHead className="text-center font-bold text-[10px] uppercase tracking-wider py-5">
                         y
                       </TableHead>
-                      <TableHead className="text-center font-bold text-[10px] uppercase tracking-widest py-6">
+                      <TableHead className="text-center font-bold text-[10px] uppercase tracking-wider py-5">
                         z
                       </TableHead>
-                      <TableHead className="text-center font-bold text-[10px] uppercase tracking-widest py-6 text-emerald-600">
+                      <TableHead className="text-center font-bold text-[10px] uppercase tracking-wider py-5 text-emerald-600">
                         galat x
                       </TableHead>
-                      <TableHead className="text-center font-bold text-[10px] uppercase tracking-widest py-6 text-emerald-600">
+                      <TableHead className="text-center font-bold text-[10px] uppercase tracking-wider py-5 text-emerald-600">
                         galat y
                       </TableHead>
-                      <TableHead className="text-center font-bold text-[10px] uppercase tracking-widest py-6 text-emerald-600">
+                      <TableHead className="text-center font-bold text-[10px] uppercase tracking-wider py-5 text-emerald-600">
                         galat z
                       </TableHead>
                     </TableRow>
@@ -402,54 +420,87 @@ const GaussSeidelPage = () => {
                         iterations.map((row, idx) => (
                           <motion.tr
                             key={row.iterasi}
-                            initial={{ opacity: 0, y: 10 }}
+                            initial={{ opacity: 0, y: 8 }}
                             animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: idx * 0.05 }}
-                            className="border-gray-50 hover:bg-emerald-50/20 transition-all duration-300"
+                            transition={{ delay: idx * 0.02 }}
+                            className="hover:bg-emerald-50/20 border-b border-gray-50 transition-colors"
                           >
-                            <TableCell className="text-center font-bold text-gray-300">
+                            <TableCell className="text-center font-bold text-gray-400 py-3.5">
                               {row.iterasi}
                             </TableCell>
-                            <TableCell className="text-center font-mono font-bold text-black">
-                              {row.x.toFixed(6)}
+                            <TableCell className="text-center font-mono font-bold text-sm py-3.5 text-black">
+                              {row.x.toFixed(4)}
                             </TableCell>
-                            <TableCell className="text-center font-mono font-bold text-black">
-                              {row.y.toFixed(6)}
+                            <TableCell className="text-center font-mono font-bold text-sm py-3.5 text-black">
+                              {row.y.toFixed(4)}
                             </TableCell>
-                            <TableCell className="text-center font-mono font-bold text-black">
-                              {row.z.toFixed(6)}
+                            <TableCell className="text-center font-mono font-bold text-sm py-3.5 text-black">
+                              {row.z.toFixed(4)}
                             </TableCell>
-                            {[
-                              { val: row.galatX },
-                              { val: row.galatY },
-                              { val: row.galatZ },
-                            ].map((g, i) => {
-                              const label = galatLabel(g.val, row.iterasi);
-                              return (
-                                <TableCell key={i} className="text-center">
-                                  {label && (
-                                    <span
-                                      className={`text-[9px] font-black px-3 py-1 rounded-full ${
-                                        label === "TRUE"
-                                          ? "bg-emerald-100 text-emerald-700"
-                                          : "bg-gray-100 text-gray-400"
-                                      }`}
-                                    >
-                                      {label}
-                                    </span>
-                                  )}
-                                </TableCell>
-                              );
-                            })}
+
+                            <TableCell className="text-center py-3.5">
+                              {row.iterasi === 0 ? (
+                                <span className="text-gray-300 font-mono text-[10px] font-bold">
+                                  -
+                                </span>
+                              ) : (
+                                <span
+                                  className={`text-[10px] font-mono font-black px-2.5 py-1 rounded-md tracking-wider ${
+                                    row.isConvergedX
+                                      ? "bg-green-100 text-green-700"
+                                      : "bg-red-50 text-red-500"
+                                  }`}
+                                >
+                                  {row.isConvergedX ? "TRUE" : "FALSE"}
+                                </span>
+                              )}
+                            </TableCell>
+
+                            <TableCell className="text-center py-3.5">
+                              {row.iterasi === 0 ? (
+                                <span className="text-gray-300 font-mono text-[10px] font-bold">
+                                  -
+                                </span>
+                              ) : (
+                                <span
+                                  className={`text-[10px] font-mono font-black px-2.5 py-1 rounded-md tracking-wider ${
+                                    row.isConvergedY
+                                      ? "bg-green-100 text-green-700"
+                                      : "bg-red-50 text-red-500"
+                                  }`}
+                                >
+                                  {row.isConvergedY ? "TRUE" : "FALSE"}
+                                </span>
+                              )}
+                            </TableCell>
+
+                            <TableCell className="text-center py-3.5">
+                              {row.iterasi === 0 ? (
+                                <span className="text-gray-300 font-mono text-[10px] font-bold">
+                                  -
+                                </span>
+                              ) : (
+                                <span
+                                  className={`text-[10px] font-mono font-black px-2.5 py-1 rounded-md tracking-wider ${
+                                    row.isConvergedZ
+                                      ? "bg-green-100 text-green-700"
+                                      : "bg-red-50 text-red-500"
+                                  }`}
+                                >
+                                  {row.isConvergedZ ? "TRUE" : "FALSE"}
+                                </span>
+                              )}
+                            </TableCell>
                           </motion.tr>
                         ))
                       ) : (
                         <TableRow>
                           <TableCell
                             colSpan={7}
-                            className="text-center py-20 text-gray-400 italic"
+                            className="text-center py-24 text-gray-400 italic"
                           >
-                            klik tombol di atas untuk melihat proses lelaran...
+                            silakan klik tombol kalkulasi di atas untuk melihat
+                            pemetaan tabel lelaran seidel...
                           </TableCell>
                         </TableRow>
                       )}

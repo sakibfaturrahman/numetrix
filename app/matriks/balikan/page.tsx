@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import Image from "next/image";
 import Navbar from "@/components/layouts/navbar";
 import Footer from "@/components/layouts/footer";
 import { Input } from "@/components/ui/input";
@@ -139,6 +140,43 @@ const MatriksBalikanPage = () => {
               <HelpCircle className="w-6 h-6 text-white group-hover:rotate-12 transition-transform" />
             </Button>
           </div>
+
+          {/* HERO SECTION */}
+          <section className="bg-white rounded-[40px] md:rounded-[50px] p-8 md:p-16 border border-gray-100 shadow-2xl mb-8 overflow-hidden">
+            <div className="flex flex-col md:flex-row justify-between items-center gap-12">
+              <div className="max-w-xl flex-1">
+                <motion.span
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="px-4 py-1.5 bg-blue-50 text-blue-600 text-[10px] font-bold tracking-[0.2em] rounded-full uppercase mb-6 inline-block"
+                >
+                  metode matriks balikan
+                </motion.span>
+                <h1 className="text-4xl md:text-6xl font-bold tracking-tighter text-black leading-tight mb-6">
+                  solusi <span className="text-gray-300">spl</span> <br />{" "}
+                  dengan matriks invers.
+                </h1>
+                <p className="text-gray-400 text-sm md:text-base leading-relaxed">
+                  selesaikan sistem persamaan linear dengan mencari balikan
+                  (invers) dari matriks koefisien. metode ini menggunakan
+                  eliminasi gauss-jordan untuk mereduksi matriks augmented
+                  secara efisien.
+                </p>
+              </div>
+
+              <motion.div className="w-full md:w-[350px] flex justify-center items-center">
+                <div className="relative w-full aspect-square">
+                  <Image
+                    src="/images/Mathematics-pana.svg"
+                    alt="Inverse Matrix Illustration"
+                    fill
+                    priority
+                    className="object-contain drop-shadow-2xl"
+                  />
+                </div>
+              </motion.div>
+            </div>
+          </section>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* INPUT SECTION */}

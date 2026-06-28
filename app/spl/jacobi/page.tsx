@@ -70,7 +70,7 @@ const JacobiPage = () => {
   const lastIter =
     iterations.length > 0 ? iterations[iterations.length - 1] : null;
 
-  // Status konvergensi total tercapai apabila komponen galat semuanya bernilai TRUE
+  // Diperbarui agar mengecek boolean convergence hasil backend (1e-9) bukan lagi < 0.001
   const isConverged =
     lastIter !== null &&
     lastIter.isConvergedX &&
@@ -89,7 +89,7 @@ const JacobiPage = () => {
           matrixA,
           vectorB,
           initialGuess: [initialGuess.x, initialGuess.y, initialGuess.z],
-          maxIter: 30,
+          maxIter: 30, // Mengakomodasi limit toleransi konvergensi ke-19
         }),
       });
 
@@ -109,7 +109,7 @@ const JacobiPage = () => {
   };
 
   const resetInput = () => {
-    setInitialGuess({ x: 0, y: 0, z: 0 });
+    setInitialGuess({ x: 1, y: 2, z: 2 });
     setIterations([]);
     setError(null);
   };
@@ -347,7 +347,7 @@ const JacobiPage = () => {
             </Card>
           </div>
 
-          {/* TABEL ITERASI DENGAN OUTPUT TRUE / FALSE INDEPENDEN */}
+          {/* TABEL ITERASI */}
           <section className="mt-12">
             <div className="flex items-center gap-4 mb-8">
               <div className="flex items-center gap-2">
@@ -420,7 +420,6 @@ const JacobiPage = () => {
                               {row.z.toFixed(6)}
                             </TableCell>
 
-                            {/* Render Badge Status TRUE / FALSE Independen per komponen lelaran */}
                             <TableCell className="text-center py-3.5">
                               {row.iterasi === 0 ? (
                                 <span className="text-gray-300 font-mono text-[10px] font-bold">
