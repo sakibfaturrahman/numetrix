@@ -49,7 +49,6 @@ const JacobiPage = () => {
   const [iterations, setIterations] = useState<JacobiIteration[]>([]);
   const [decimals, setDecimals] = useState<number>(6);
 
-  // Nilai awal matriks A dan b diubah berbentuk string-number agar input bisa dikosongkan saat mengetik
   const [matrixA, setMatrixA] = useState<(string | number)[][]>([
     [4, -1, 1],
     [4, -8, 1],
@@ -99,7 +98,6 @@ const JacobiPage = () => {
     lastIter.isConvergedY &&
     lastIter.isConvergedZ;
 
-  // Fungsi string builder otomatis untuk menampilkan rumus fungsi lelaran secara dinamis
   const generateFormulaText = (index: number, variableName: string) => {
     const bVal = parseFloat(vectorB[index]?.toString()) || 0;
     const diagVal = parseFloat(matrixA[index][index]?.toString()) || 1;
@@ -128,7 +126,6 @@ const JacobiPage = () => {
     setError(null);
     setIterations([]);
 
-    // Parsing data string dari form menuju tipe data number murni sebelum dikirim ke API
     const parsedMatrixA = matrixA.map((row) =>
       row.map((val) => (val === "" ? 0 : parseFloat(val.toString()) || 0)),
     );
@@ -375,16 +372,16 @@ const JacobiPage = () => {
               </Button>
             </Card>
 
-            {/* INFO PANEL KONVERGENSI */}
-            <Card className="p-8 md:p-10 rounded-[40px] border-none shadow-xl bg-[#0d0d0d] text-white flex flex-col justify-between overflow-hidden relative">
+            {/* INFO PANEL KONVERGENSI - DIUBAH MENJADI SOFT LIGHT ORANGE THEME */}
+            <Card className="p-8 md:p-10 rounded-[40px] border border-orange-100/80 shadow-xl bg-orange-50/60 text-zinc-800 flex flex-col justify-between overflow-hidden relative">
               <div className="relative z-10">
-                <div className="w-12 h-12 bg-orange-500/20 rounded-2xl flex items-center justify-center mb-6">
-                  <Activity className="w-6 h-6 text-orange-500" />
+                <div className="w-12 h-12 bg-orange-500/10 rounded-2xl flex items-center justify-center mb-6">
+                  <Activity className="w-6 h-6 text-orange-600" />
                 </div>
-                <h3 className="text-lg font-bold mb-4 text-orange-400">
+                <h3 className="text-lg font-bold mb-4 text-orange-700">
                   syarat konvergensi.
                 </h3>
-                <p className="text-xs text-gray-500 leading-relaxed italic">
+                <p className="text-xs text-zinc-500 leading-relaxed italic">
                   agar lelaran mencapai solusi sejati, pengujian selisih nilai
                   mutlak tiap variabel dihitung ketat terhadap batas epsilon.
                 </p>
@@ -397,9 +394,9 @@ const JacobiPage = () => {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0 }}
-                    className="mt-6 pt-5 border-t border-white/10 relative z-10 space-y-3"
+                    className="mt-6 pt-5 border-t border-orange-200/60 relative z-10 space-y-3"
                   >
-                    <p className="text-[9px] text-gray-500 tracking-widest uppercase font-bold mb-2">
+                    <p className="text-[9px] text-zinc-400 tracking-widest uppercase font-bold mb-2">
                       hasil akhir lelaran ke-{lastIter.iterasi}:
                     </p>
                     {[
@@ -411,20 +408,20 @@ const JacobiPage = () => {
                         key={label}
                         className="flex justify-between items-center"
                       >
-                        <span className="text-[10px] text-gray-400 font-mono">
+                        <span className="text-[10px] text-zinc-500 font-mono">
                           {label} =
                         </span>
-                        <span className="text-sm font-mono font-bold text-orange-400">
+                        <span className="text-sm font-mono font-bold text-orange-700">
                           {val.toFixed(decimals)}
                         </span>
                       </div>
                     ))}
                     <div className="flex items-center gap-2 pt-2">
                       <CheckCircle2
-                        className={`w-4 h-4 ${isConverged ? "text-green-400" : "text-gray-600"}`}
+                        className={`w-4 h-4 ${isConverged ? "text-green-600" : "text-zinc-400"}`}
                       />
                       <span
-                        className={`text-[10px] font-bold tracking-wide ${isConverged ? "text-green-400" : "text-gray-500"}`}
+                        className={`text-[10px] font-bold tracking-wide ${isConverged ? "text-green-600" : "text-zinc-500"}`}
                       >
                         {isConverged ? "status konvergen ✓" : "belum konvergen"}
                       </span>
@@ -433,11 +430,11 @@ const JacobiPage = () => {
                 )}
               </AnimatePresence>
 
-              <div className="mt-8 pt-6 border-t border-white/5 relative z-10">
-                <p className="text-[9px] text-gray-500 mb-4 tracking-widest uppercase font-bold">
+              <div className="mt-8 pt-6 border-t border-orange-200/40 relative z-10">
+                <p className="text-[9px] text-zinc-400 mb-4 tracking-widest uppercase font-bold">
                   toleransi galat murni (e):
                 </p>
-                <span className="text-lg font-mono font-bold text-orange-400 tracking-tighter">
+                <span className="text-lg font-mono font-bold text-orange-700 tracking-tighter">
                   0.000000001 (1e-9)
                 </span>
               </div>

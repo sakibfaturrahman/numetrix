@@ -162,9 +162,9 @@ const DekomposisiLUPage = () => {
           <div className="fixed bottom-10 right-10 z-[100]">
             <Button
               onClick={() => setShowGuide(true)}
-              className="w-14 h-14 rounded-full bg-black shadow-2xl hover:scale-110 transition-transform border-none flex items-center justify-center group"
+              className="w-14 h-14 rounded-full bg-white text-black border border-gray-100 shadow-2xl hover:scale-110 transition-transform flex items-center justify-center group"
             >
-              <HelpCircle className="w-6 h-6 text-white group-hover:rotate-12 transition-transform" />
+              <HelpCircle className="w-6 h-6 text-gray-400 group-hover:text-black transition-colors" />
             </Button>
           </div>
 
@@ -206,7 +206,7 @@ const DekomposisiLUPage = () => {
             <Card className="lg:col-span-2 p-8 md:p-12 rounded-[40px] border-none shadow-xl bg-white flex flex-col gap-10">
               <div className="flex justify-between items-center">
                 <div>
-                  <h2 className="text-xl font-bold tracking-tight">
+                  <h2 className="text-xl font-bold tracking-tight text-black">
                     susun matriks A.
                   </h2>
                   <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">
@@ -247,7 +247,7 @@ const DekomposisiLUPage = () => {
                 {/* Vector B Inputs (Vertikal Kolom) */}
                 <div className="flex flex-col gap-3 p-4 bg-emerald-50/50 rounded-[30px] border border-emerald-100 relative">
                   <span className="absolute -top-6 left-2 text-[10px] font-bold text-emerald-300 uppercase tracking-widest font-sans">
-                    hasil [b]
+                    vektor [b]
                   </span>
                   {vectorB.map((val, r) => (
                     <div key={`b-row-${r}`} className="flex items-center gap-2">
@@ -269,7 +269,7 @@ const DekomposisiLUPage = () => {
               <Button
                 onClick={calculateLU}
                 disabled={loading}
-                className="w-full py-8 bg-black text-white rounded-[30px] text-[10px] font-bold uppercase tracking-[0.2em] hover:bg-emerald-900 transition-all flex gap-3 group border-none"
+                className="w-full py-8 bg-zinc-900 text-white rounded-[30px] text-[10px] font-bold uppercase tracking-[0.2em] hover:bg-zinc-800 transition-all flex gap-3 group border-none"
               >
                 {loading ? "sedang memproses..." : "jalankan dekomposisi"}
                 {!loading && (
@@ -278,45 +278,45 @@ const DekomposisiLUPage = () => {
               </Button>
             </Card>
 
-            {/* INFO PANEL */}
-            <Card className="p-8 md:p-10 rounded-[40px] border-none shadow-xl bg-[#111] text-white flex flex-col justify-between overflow-hidden relative">
+            {/* INFO PANEL (Diubah menjadi Soft Gray dengan Border Halus) */}
+            <Card className="p-8 md:p-10 rounded-[40px] border border-gray-200/60 shadow-xl bg-zinc-50 text-zinc-800 flex flex-col justify-between overflow-hidden relative">
               <div className="relative z-10">
-                <h3 className="text-lg font-bold mb-4">
+                <h3 className="text-lg font-bold mb-4 text-zinc-900">
                   struktur pemfaktoran.
                 </h3>
                 <div className="space-y-6">
                   <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-emerald-500/20 rounded-xl flex items-center justify-center font-bold text-emerald-400 font-mono text-lg">
+                    <div className="w-12 h-12 bg-emerald-500/10 rounded-xl flex items-center justify-center font-bold text-emerald-600 font-mono text-lg border border-emerald-100">
                       L
                     </div>
-                    <p className="text-[10px] text-gray-500 italic leading-relaxed">
+                    <p className="text-[10px] text-zinc-500 italic leading-relaxed">
                       matriks segitiga bawah (lower) dengan semua elemen
                       diagonal = 1.
                     </p>
                   </div>
                   <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-blue-500/20 rounded-xl flex items-center justify-center font-bold text-blue-400 font-mono text-lg">
+                    <div className="w-12 h-12 bg-blue-500/10 rounded-xl flex items-center justify-center font-bold text-blue-600 font-mono text-lg border border-blue-100">
                       U
                     </div>
-                    <p className="text-[10px] text-gray-500 italic leading-relaxed">
+                    <p className="text-[10px] text-zinc-500 italic leading-relaxed">
                       matriks segitiga atas (upper) hasil eliminasi Gauss.
                     </p>
                   </div>
                 </div>
               </div>
-              <div className="mt-12 pt-6 border-t border-white/5 relative z-10">
-                <p className="text-[10px] text-gray-500 mb-4 uppercase tracking-widest font-bold">
+              <div className="mt-12 pt-6 border-t border-zinc-200 relative z-10">
+                <p className="text-[10px] text-zinc-400 mb-4 uppercase tracking-widest font-bold">
                   alur penyelesaian:
                 </p>
                 <div className="flex justify-between items-center text-[9px] font-bold uppercase tracking-widest">
-                  <span className="text-emerald-400">A = LU</span>
-                  <ChevronRight className="w-3 h-3 text-emerald-500" />
-                  <span className="text-emerald-300">Ly = b</span>
-                  <ChevronRight className="w-3 h-3 text-emerald-500" />
-                  <span className="text-blue-300">Ux = y</span>
+                  <span className="text-emerald-600">A = LU</span>
+                  <ChevronRight className="w-3 h-3 text-emerald-400" />
+                  <span className="text-emerald-500">Ly = b</span>
+                  <ChevronRight className="w-3 h-3 text-blue-400" />
+                  <span className="text-blue-600">Ux = y</span>
                 </div>
               </div>
-              <div className="absolute -right-20 -bottom-20 w-64 h-64 bg-emerald-500/10 blur-[100px] rounded-full" />
+              <div className="absolute -right-20 -bottom-20 w-64 h-64 bg-emerald-500/5 blur-[100px] rounded-full" />
             </Card>
           </div>
 
@@ -365,7 +365,7 @@ const DekomposisiLUPage = () => {
                           >
                             <div className="flex items-center justify-between border-b border-gray-100 pb-3 flex-wrap gap-2">
                               <div className="flex items-center gap-3">
-                                <span className="w-7 h-7 rounded-full bg-black text-[11px] text-white flex items-center justify-center font-bold">
+                                <span className="w-7 h-7 rounded-full bg-zinc-100 text-[11px] text-zinc-700 border border-zinc-200 flex items-center justify-center font-bold">
                                   {index + 1}
                                 </span>
                                 <p className="text-xs font-bold text-emerald-700 font-sans tracking-wide">
@@ -442,7 +442,6 @@ const DekomposisiLUPage = () => {
                       </h2>
                       <div className="h-[1px] flex-1 bg-gray-200" />
                     </div>
-                    {/* DECIMAL CONTROL INTERAKTIF UNTUK HASIL AKHIR */}
                     <DecimalControl
                       decimals={decimals}
                       setDecimals={setDecimals}
@@ -451,7 +450,7 @@ const DekomposisiLUPage = () => {
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                     <Card className="p-8 rounded-[40px] border-none shadow-lg bg-white relative overflow-hidden">
-                      <span className="absolute top-4 right-6 text-[60px] font-black text-gray-50 select-none">
+                      <span className="absolute top-4 right-6 text-[60px] font-black text-gray-50/60 select-none">
                         L
                       </span>
                       <h4 className="text-sm font-bold mb-2 text-emerald-600 uppercase tracking-widest">
@@ -476,7 +475,7 @@ const DekomposisiLUPage = () => {
                     </Card>
 
                     <Card className="p-8 rounded-[40px] border-none shadow-lg bg-white relative overflow-hidden">
-                      <span className="absolute top-4 right-6 text-[60px] font-black text-gray-50 select-none">
+                      <span className="absolute top-4 right-6 text-[60px] font-black text-gray-50/60 select-none">
                         U
                       </span>
                       <h4 className="text-sm font-bold mb-2 text-blue-600 uppercase tracking-widest">
@@ -609,19 +608,19 @@ const DekomposisiLUPage = () => {
                   </div>
                 </div>
 
-                {/* SOLUSI KESIMPULAN */}
-                <Card className="p-10 rounded-[45px] border-none shadow-2xl bg-black text-white text-center relative overflow-hidden">
-                  <h4 className="text-[10px] font-bold uppercase tracking-[0.4em] text-emerald-400 mb-8">
+                {/* SOLUSI KESIMPULAN (Diubah dari bg-black menjadi Soft Mint Emerald) */}
+                <Card className="p-10 rounded-[45px] border border-emerald-100 shadow-xl bg-emerald-50/60 text-zinc-800 text-center relative overflow-hidden">
+                  <h4 className="text-[10px] font-bold uppercase tracking-[0.4em] text-emerald-600 mb-8 font-sans">
                     solusi akhir sistem persamaan linear
                   </h4>
                   <div className="flex flex-col md:flex-row justify-center gap-12 items-center">
                     {results.x?.map((val, i) => (
                       <div key={i} className="flex flex-col items-center">
-                        <span className="text-gray-500 text-[10px] uppercase mb-2 font-bold tracking-widest italic">
+                        <span className="text-zinc-400 text-[10px] uppercase mb-2 font-bold tracking-widest italic">
                           nilai variabel{" "}
                           {i === 0 ? "x (x1)" : i === 1 ? "y (x2)" : "z (x3)"}
                         </span>
-                        <span className="text-5xl font-bold tracking-tighter text-white font-mono">
+                        <span className="text-5xl font-bold tracking-tighter text-emerald-700 font-mono">
                           {fmt(val)}
                         </span>
                       </div>

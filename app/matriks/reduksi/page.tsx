@@ -58,7 +58,7 @@ const stepTypeStyle: Record<
     bg: "bg-amber-50/80",
     text: "text-amber-600",
     border: "border-amber-100",
-    label: "pivoting excel",
+    label: "pivoting otomatis",
   },
 };
 
@@ -67,16 +67,14 @@ const ReduksiCroutPage = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [results, setResults] = useState<CroutResult | null>(null);
-  const [showSteps, setShowSteps] = useState(true);
   const [decimals, setDecimals] = useState<number>(2);
 
-  // Inisialisasi menggunakan string murni agar form ketikan fleksibel
   const [matrixA, setMatrixA] = useState<(string | number)[][]>([
-    [1, 1, -1],
-    [2, 2, 1],
-    [-1, 1, 1],
+    [2, 4, 2],
+    [1, 5, 3],
+    [1, 3, 6],
   ]);
-  const [vectorB, setVectorB] = useState<(string | number)[]>([1, 5, 1]);
+  const [vectorB, setVectorB] = useState<(string | number)[]>([16, 19, 25]);
 
   useEffect(() => {
     const hasSeenGuide = localStorage.getItem("hasSeenCroutGuide");
@@ -130,6 +128,7 @@ const ReduksiCroutPage = () => {
         body: JSON.stringify({
           matrixA: parsedMatrixA,
           vectorB: parsedVectorB,
+          maxIter: 30,
         }),
       });
 
@@ -246,7 +245,7 @@ const ReduksiCroutPage = () => {
 
                 <div className="h-40 w-[2px] bg-gray-100 hidden md:block" />
 
-                {/* Vector B Kolom Vertikal Sejati */}
+                {/* Vector B */}
                 <div className="flex flex-col gap-3 p-4 bg-pink-50/50 rounded-[30px] border border-pink-100 relative">
                   <span className="absolute -top-6 left-2 text-[10px] font-bold text-pink-300 uppercase tracking-widest font-sans">
                     vektor [b]
@@ -283,30 +282,30 @@ const ReduksiCroutPage = () => {
               </Button>
             </Card>
 
-            {/* INFO PANEL */}
-            <Card className="p-8 md:p-10 rounded-[40px] border-none shadow-xl bg-[#0a0a0a] text-white flex flex-col justify-between overflow-hidden relative">
+            {/* INFO PANEL (Diubah dari warna dark menjadi warna light soft pink) */}
+            <Card className="p-8 md:p-10 rounded-[40px] border border-pink-100 shadow-xl bg-white text-black flex flex-col justify-between overflow-hidden relative">
               <div className="relative z-10">
-                <h3 className="text-lg font-bold mb-6 text-pink-400">
+                <h3 className="text-lg font-bold mb-6 text-pink-600">
                   skema crout.
                 </h3>
                 <div className="space-y-5">
-                  <div className="p-4 bg-white/5 rounded-2xl border border-white/5">
-                    <p className="text-[10px] text-gray-500 mb-2 uppercase font-bold tracking-widest">
+                  <div className="p-4 bg-pink-50/40 rounded-2xl border border-pink-100/50">
+                    <p className="text-[10px] text-pink-500 mb-2 uppercase font-bold tracking-widest">
                       aturan diagonal
                     </p>
-                    <p className="text-xs text-gray-300 leading-relaxed italic">
+                    <p className="text-xs text-gray-500 leading-relaxed">
                       diagonal matriks U wajib bernilai satu{" "}
-                      <span className="text-pink-400 font-bold underline">
+                      <span className="text-pink-600 font-bold underline">
                         (uᵢᵢ = 1)
                       </span>
                       . Nilai diagonal L dicari bertahap.
                     </p>
                   </div>
-                  <div className="p-4 bg-white/5 rounded-2xl border border-white/5">
-                    <p className="text-[10px] text-gray-500 mb-2 uppercase font-bold tracking-widest">
+                  <div className="p-4 bg-pink-50/40 rounded-2xl border border-pink-100/50">
+                    <p className="text-[10px] text-pink-500 mb-2 uppercase font-bold tracking-widest">
                       urutan eliminasi:
                     </p>
-                    <p className="text-[11px] font-mono text-gray-400 leading-relaxed">
+                    <p className="text-[11px] font-mono text-pink-600 leading-relaxed font-bold">
                       Kolom-1 L → Baris-1 U → Kolom-2 L → Baris-2 U → ... dst.
                     </p>
                   </div>
@@ -318,9 +317,8 @@ const ReduksiCroutPage = () => {
 
           {/* RESULTS SECTION */}
           <AnimatePresence>
-            {results ? (
+            {results && (
               <motion.div
-                key="results"
                 initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
                 className="mt-12 space-y-12"
@@ -337,48 +335,44 @@ const ReduksiCroutPage = () => {
                         <div className="h-[1px] flex-1 bg-gray-200" />
                       </div>
 
-                      <AnimatePresence>
-                        {showSteps && (
-                          <div className="space-y-6">
-                            {results.decompositionSteps.map((step, index) => {
-                              const style =
-                                stepTypeStyle[step.type] ||
-                                stepTypeStyle["baris_u"];
-                              return (
-                                <motion.div
-                                  key={index}
-                                  initial={{ opacity: 0, x: -10 }}
-                                  animate={{ opacity: 1, x: 0 }}
-                                  transition={{ delay: index * 0.02 }}
-                                  className="bg-white p-6 md:p-8 rounded-[35px] shadow-md border border-gray-100 flex flex-col gap-4"
-                                >
-                                  <div className="flex items-center justify-between border-b border-gray-100 pb-3 flex-wrap gap-2">
-                                    <div className="flex items-center gap-3">
-                                      <span className="w-7 h-7 rounded-full bg-pink-600 text-[10px] text-white flex items-center justify-center font-bold shadow-md">
-                                        {index + 1}
-                                      </span>
-                                      <span
-                                        className={`px-3 py-1 rounded-full text-[9px] font-bold uppercase tracking-widest ${style.bg} ${style.text}`}
-                                      >
-                                        {style.label}
-                                      </span>
-                                      <p className="text-xs font-bold text-gray-700 tracking-tight">
-                                        {step.label}
-                                      </p>
-                                    </div>
-                                  </div>
-                                  <div
-                                    className={`p-4 rounded-2xl font-mono text-xs border ${style.bg} ${style.border} ${style.text} leading-loose break-words`}
+                      <div className="space-y-6">
+                        {results.decompositionSteps.map((step, index) => {
+                          const style =
+                            stepTypeStyle[step.type] ||
+                            stepTypeStyle["baris_u"];
+                          return (
+                            <motion.div
+                              key={index}
+                              initial={{ opacity: 0, x: -10 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              transition={{ delay: index * 0.01 }}
+                              className="bg-white p-6 md:p-8 rounded-[35px] shadow-md border border-gray-100 flex flex-col gap-4"
+                            >
+                              <div className="flex items-center justify-between border-b border-gray-100 pb-3 flex-wrap gap-2">
+                                <div className="flex items-center gap-3">
+                                  <span className="w-7 h-7 rounded-full bg-pink-600 text-[10px] text-white flex items-center justify-center font-bold shadow-md">
+                                    {index + 1}
+                                  </span>
+                                  <span
+                                    className={`px-3 py-1 rounded-full text-[9px] font-bold uppercase tracking-widest ${style.bg} ${style.text}`}
                                   >
-                                    <strong>rumus / nilai:</strong> <br />
-                                    {step.detail}
-                                  </div>
-                                </motion.div>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </AnimatePresence>
+                                    {style.label}
+                                  </span>
+                                  <p className="text-xs font-bold text-gray-700 tracking-tight">
+                                    {step.label}
+                                  </p>
+                                </div>
+                              </div>
+                              <div
+                                className={`p-4 rounded-2xl font-mono text-xs border ${style.bg} ${style.border} ${style.text} leading-loose break-words`}
+                              >
+                                <strong>rumus / nilai:</strong> <br />
+                                {step.detail}
+                              </div>
+                            </motion.div>
+                          );
+                        })}
+                      </div>
                     </div>
                   )}
 
@@ -391,7 +385,6 @@ const ReduksiCroutPage = () => {
                       </h2>
                       <div className="h-[1px] flex-1 bg-gray-200" />
                     </div>
-                    {/* SINKRONISASI DENGAN CONTROL DESIMAL GLOBAL */}
                     <DecimalControl
                       decimals={decimals}
                       setDecimals={setDecimals}
@@ -399,7 +392,6 @@ const ReduksiCroutPage = () => {
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    {/* Matriks L */}
                     <Card className="p-8 rounded-[40px] border-none shadow-lg bg-white relative overflow-hidden">
                       <span className="absolute top-4 right-6 text-[60px] font-black text-gray-50 select-none">
                         L
@@ -412,11 +404,7 @@ const ReduksiCroutPage = () => {
                           row.map((val, cIdx) => (
                             <div
                               key={`l-crout-${rIdx}-${cIdx}`}
-                              className={`h-14 flex items-center justify-center font-mono font-bold rounded-2xl text-xs ${
-                                rIdx >= cIdx
-                                  ? "bg-pink-50 text-pink-700 border border-pink-100"
-                                  : "bg-gray-50 text-gray-300"
-                              }`}
+                              className={`h-14 flex items-center justify-center font-mono font-bold rounded-2xl text-xs ${rIdx >= cIdx ? "bg-pink-50 text-pink-700 border border-pink-100" : "bg-gray-50 text-gray-300"}`}
                             >
                               {fmt(val)}
                             </div>
@@ -425,7 +413,6 @@ const ReduksiCroutPage = () => {
                       </div>
                     </Card>
 
-                    {/* Matriks U */}
                     <Card className="p-8 rounded-[40px] border-none shadow-lg bg-white relative overflow-hidden">
                       <span className="absolute top-4 right-6 text-[60px] font-black text-gray-50 select-none">
                         U
@@ -438,11 +425,7 @@ const ReduksiCroutPage = () => {
                           row.map((val, cIdx) => (
                             <div
                               key={`u-crout-${rIdx}-${cIdx}`}
-                              className={`h-14 flex items-center justify-center font-mono font-bold rounded-2xl text-xs ${
-                                rIdx <= cIdx
-                                  ? "bg-blue-50 text-blue-700 border border-blue-100"
-                                  : "bg-gray-50 text-gray-300"
-                              }`}
+                              className={`h-14 flex items-center justify-center font-mono font-bold rounded-2xl text-xs ${rIdx <= cIdx ? "bg-blue-50 text-blue-700 border border-blue-100" : "bg-gray-50 text-gray-300"}`}
                             >
                               {fmt(val)}
                             </div>
@@ -548,45 +531,30 @@ const ReduksiCroutPage = () => {
                   </Card>
                 </div>
 
-                {/* KESIMPULAN AKHIR */}
-                <Card className="p-10 rounded-[45px] border-none shadow-2xl bg-black text-white text-center relative overflow-hidden">
+                {/* KESIMPULAN AKHIR (Diubah dari warna black murni menjadi warna soft pastel light mode) */}
+                <Card className="p-10 rounded-[45px] border border-pink-100 shadow-xl bg-white text-black text-center relative overflow-hidden">
                   <div className="relative z-10">
                     <CheckCircle2 className="w-12 h-12 text-pink-500 mx-auto mb-6" />
-                    <h4 className="text-[10px] font-bold uppercase tracking-[0.4em] text-pink-500 mb-8 italic">
+                    <h4 className="text-[10px] font-bold uppercase tracking-[0.4em] text-pink-500 mb-8">
                       solusi akhir akar persamaan linear
                     </h4>
                     <div className="flex flex-col md:flex-row justify-center gap-12 items-center">
                       {results.x.map((val, i) => (
                         <div key={i} className="flex flex-col items-center">
-                          <span className="text-gray-500 text-[10px] uppercase mb-2 font-bold tracking-widest italic">
+                          <span className="text-gray-400 text-[10px] uppercase mb-2 font-bold tracking-widest">
                             variabel{" "}
                             {i === 0 ? "x (x1)" : i === 1 ? "y (x2)" : "z (x3)"}
                           </span>
-                          <span className="text-5xl font-bold tracking-tighter text-white font-mono">
+                          <span className="text-5xl font-bold tracking-tighter text-pink-600 font-mono">
                             {fmt(val)}
                           </span>
                         </div>
                       ))}
                     </div>
                   </div>
-                  <div className="absolute -left-10 -bottom-10 w-40 h-40 bg-pink-500/20 blur-[80px] rounded-full" />
+                  <div className="absolute -left-10 -bottom-10 w-40 h-40 bg-pink-500/5 blur-[80px] rounded-full" />
                 </Card>
               </motion.div>
-            ) : (
-              !loading && (
-                <div className="mt-12 opacity-50 grayscale cursor-not-allowed">
-                  <div className="flex items-center gap-4 mb-8">
-                    <h2 className="text-xl font-bold tracking-tighter text-black">
-                      analisis reduksi & substitusi.
-                    </h2>
-                    <div className="h-[1px] flex-1 bg-gray-200" />
-                  </div>
-                  <div className="bg-white/50 border border-dashed border-gray-300 rounded-[40px] h-40 flex items-center justify-center text-gray-400 italic text-sm px-10 text-center">
-                    klik tombol reduksi untuk melihat hasil pemfaktoran L dan U
-                    serta solusi akhir.
-                  </div>
-                </div>
-              )
             )}
           </AnimatePresence>
         </div>

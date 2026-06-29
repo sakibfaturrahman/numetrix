@@ -116,7 +116,6 @@ const MatriksBalikanPage = () => {
     }
   };
 
-  // Fungsi formatting angka diperbaiki murni mengikat konsisten ke toFixed desimal aktif
   const fmt = (n: number, places = decimals) => {
     if (typeof n !== "number" || isNaN(n)) return "0";
     return n.toFixed(places);
@@ -144,10 +143,11 @@ const MatriksBalikanPage = () => {
         <div className="max-w-6xl mx-auto">
           <ErrorMessage message={error} onClose={() => setError(null)} />
 
+          {/* FLOATING ACTION FLOATING BUTTON: DIUBAH DARI bg-black MENJADI SOFT BLUE ACCENT */}
           <div className="fixed bottom-10 right-10 z-[100]">
             <Button
               onClick={() => setShowGuide(true)}
-              className="w-14 h-14 rounded-full bg-black shadow-2xl hover:scale-110 transition-transform border-none flex items-center justify-center group"
+              className="w-14 h-14 rounded-full bg-blue-600 shadow-2xl shadow-blue-200 hover:bg-blue-700 hover:scale-110 transition-transform border-none flex items-center justify-center group"
             >
               <HelpCircle className="w-6 h-6 text-white group-hover:rotate-12 transition-transform" />
             </Button>
@@ -258,10 +258,11 @@ const MatriksBalikanPage = () => {
                 </div>
               </div>
 
+              {/* ACTION COMPUTE BUTTON: DIUBAH DARI bg-black MENJADI SOFT PASTEL ROYAL BLUE */}
               <Button
                 onClick={calculateInverse}
                 disabled={loading}
-                className="w-full py-8 bg-black text-white rounded-[30px] text-[10px] font-bold uppercase tracking-[0.2em] hover:bg-zinc-800 transition-all flex gap-3 group border-none"
+                className="w-full py-8 bg-blue-600 text-white rounded-[30px] text-[10px] font-bold uppercase tracking-[0.2em] hover:bg-blue-700 hover:shadow-xl hover:shadow-blue-100 transition-all flex gap-3 group border-none"
               >
                 {loading
                   ? "sedang memproses data..."
@@ -272,31 +273,31 @@ const MatriksBalikanPage = () => {
               </Button>
             </Card>
 
-            {/* INFO PANEL */}
-            <Card className="p-8 md:p-10 rounded-[40px] border-none shadow-xl bg-black text-white flex flex-col justify-between overflow-hidden relative">
+            {/* INFO PANEL: DIUBAH TOTAL DARI DARK THEME (bg-black text-white) MENJADI SOFT PASTEL LIGHT THEME */}
+            <Card className="p-8 md:p-10 rounded-[40px] border border-gray-100 shadow-xl bg-white text-black flex flex-col justify-between overflow-hidden relative">
               <div className="relative z-10">
-                <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center mb-6">
-                  <Calculator className="w-6 h-6 text-blue-400" />
+                <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center mb-6">
+                  <Calculator className="w-6 h-6 text-blue-500" />
                 </div>
-                <h3 className="text-lg font-bold mb-4 tracking-tight">
+                <h3 className="text-lg font-bold mb-4 tracking-tight text-black">
                   target identitas.
                 </h3>
-                <p className="text-xs text-gray-500 leading-relaxed italic mb-8">
+                <p className="text-xs text-gray-400 leading-relaxed italic mb-8">
                   metode gauss-jordan memaksa sisi kiri menjadi matriks
                   identitas untuk menghasilkan invers.
                 </p>
-                <div className="grid grid-cols-3 gap-2 opacity-30 scale-90 origin-left">
+                <div className="grid grid-cols-3 gap-2 opacity-60 scale-90 origin-left">
                   {[1, 0, 0, 0, 1, 0, 0, 0, 1].map((v, i) => (
                     <div
                       key={i}
-                      className={`h-12 rounded-lg border border-white/20 flex items-center justify-center font-bold font-mono ${v === 1 ? "bg-white/10" : ""}`}
+                      className={`h-12 rounded-lg border border-gray-100 flex items-center justify-center font-bold font-mono text-xs ${v === 1 ? "bg-blue-50 text-blue-600 border-blue-100" : "bg-gray-50 text-gray-400"}`}
                     >
                       {v}
                     </div>
                   ))}
                 </div>
               </div>
-              <div className="absolute -right-16 -bottom-16 w-56 h-56 bg-blue-500/10 blur-[90px] rounded-full" />
+              <div className="absolute -right-16 -bottom-16 w-56 h-56 bg-blue-500/5 blur-[90px] rounded-full" />
             </Card>
           </div>
 

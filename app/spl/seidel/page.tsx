@@ -49,7 +49,6 @@ const GaussSeidelPage = () => {
   const [iterations, setIterations] = useState<GaussSeidelIteration[]>([]);
   const [decimals, setDecimals] = useState<number>(4);
 
-  // Inisialisasi string-number agar form fleksibel saat dikosongkan user
   const [matrixA, setMatrixA] = useState<(string | number)[][]>([
     [4, -1, 1],
     [4, -8, 1],
@@ -99,7 +98,6 @@ const GaussSeidelPage = () => {
     lastIter.isConvergedY &&
     lastIter.isConvergedZ;
 
-  // Generator fungsi string builder otomatis untuk Gauss-Seidel secara real-time
   const generateFormulaText = (index: number, variableName: string) => {
     const bVal = parseFloat(vectorB[index]?.toString()) || 0;
     const diagVal = parseFloat(matrixA[index][index]?.toString()) || 1;
@@ -371,16 +369,16 @@ const GaussSeidelPage = () => {
               </Button>
             </Card>
 
-            {/* INFO PANEL KONVERGENSI */}
-            <Card className="p-8 md:p-10 rounded-[40px] border-none shadow-xl bg-[#0d0d0d] text-white flex flex-col justify-between overflow-hidden relative">
+            {/* INFO PANEL KONVERGENSI - DIUBAH MENJADI SOFT LIGHT MODE THEME */}
+            <Card className="p-8 md:p-10 rounded-[40px] border border-gray-100 shadow-xl bg-white text-gray-800 flex flex-col justify-between overflow-hidden relative">
               <div className="relative z-10">
-                <div className="w-12 h-12 bg-emerald-500/20 rounded-2xl flex items-center justify-center mb-6">
-                  <Activity className="w-6 h-6 text-emerald-500" />
+                <div className="w-12 h-12 bg-emerald-50 rounded-2xl flex items-center justify-center mb-6">
+                  <Activity className="w-6 h-6 text-emerald-600" />
                 </div>
-                <h3 className="text-lg font-bold mb-4 text-emerald-400">
+                <h3 className="text-lg font-bold mb-4 text-emerald-600">
                   evaluasi seidel.
                 </h3>
-                <p className="text-xs text-gray-500 leading-relaxed italic">
+                <p className="text-xs text-gray-400 leading-relaxed italic">
                   karena konvergensinya sekuensial, galat meluncur turun jauh
                   lebih cepat daripada jacobi menuju solusi sejati.
                 </p>
@@ -393,9 +391,9 @@ const GaussSeidelPage = () => {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0 }}
-                    className="mt-6 pt-5 border-t border-white/10 relative z-10 space-y-3"
+                    className="mt-6 pt-5 border-t border-gray-100 relative z-10 space-y-3"
                   >
-                    <p className="text-[9px] text-gray-500 tracking-widest uppercase font-bold mb-2">
+                    <p className="text-[9px] text-gray-400 tracking-widest uppercase font-bold mb-2">
                       hasil akhir lelaran ke-{lastIter.iterasi}:
                     </p>
                     {[
@@ -410,17 +408,17 @@ const GaussSeidelPage = () => {
                         <span className="text-[10px] text-gray-400 font-mono">
                           {label} =
                         </span>
-                        <span className="text-sm font-mono font-bold text-emerald-400">
+                        <span className="text-sm font-mono font-bold text-emerald-600">
                           {val.toFixed(decimals)}
                         </span>
                       </div>
                     ))}
                     <div className="flex items-center gap-2 pt-2">
                       <CheckCircle2
-                        className={`w-4 h-4 ${isConverged ? "text-green-400" : "text-gray-600"}`}
+                        className={`w-4 h-4 ${isConverged ? "text-green-500" : "text-gray-300"}`}
                       />
                       <span
-                        className={`text-[10px] font-bold tracking-wide ${isConverged ? "text-green-400" : "text-gray-500"}`}
+                        className={`text-[10px] font-bold tracking-wide ${isConverged ? "text-green-500" : "text-gray-400"}`}
                       >
                         {isConverged ? "status konvergen ✓" : "belum konvergen"}
                       </span>
@@ -429,15 +427,15 @@ const GaussSeidelPage = () => {
                 )}
               </AnimatePresence>
 
-              <div className="mt-8 pt-6 border-t border-white/5 relative z-10">
-                <p className="text-[9px] text-gray-500 mb-4 tracking-widest uppercase font-bold">
+              <div className="mt-8 pt-6 border-t border-gray-100 relative z-10">
+                <p className="text-[9px] text-gray-400 mb-4 tracking-widest uppercase font-bold">
                   toleransi galat mutlak (e):
                 </p>
-                <span className="text-lg font-mono font-bold text-emerald-400 tracking-tighter">
+                <span className="text-lg font-mono font-bold text-emerald-600 tracking-tighter">
                   0.000001 (1e-6)
                 </span>
               </div>
-              <div className="absolute -right-16 -bottom-16 w-56 h-56 bg-emerald-500/10 blur-[90px] rounded-full"></div>
+              <div className="absolute -right-16 -bottom-16 w-56 h-56 bg-emerald-500/5 blur-[90px] rounded-full"></div>
             </Card>
           </div>
 
@@ -598,3 +596,4 @@ const GaussSeidelPage = () => {
 };
 
 export default GaussSeidelPage;
+  

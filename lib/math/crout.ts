@@ -16,101 +16,134 @@ export interface CroutResult {
   decompositionSteps: CroutStep[];
 }
 
-// Menyelesaikan SPL Ax = b menggunakan metode Dekomposisi Reduksi Crout
-// Faktorisasi dilakukan secara bergantian: Kolom L kemudian Baris U
-export function solveCroutDecomposition(
-  A: number[][],
-  b: number[],
-): CroutResult {
-  const n = A.length;
+function fmt(n: number, dec = 4): string {
+  if (!isFinite(n)) return "∞";
+  const r = parseFloat(n.toFixed(dec));
+  return Number.isInteger(r) ? r.toString() : r.toFixed(dec);
+}
 
-  // Inisialisasi matriks L (segitiga bawah) dan U (segitiga atas dengan diagonal 1)
-  const L = Array.from({ length: n }, () => new Array(n).fill(0));
-  const U = Array.from({ length: n }, () => new Array(n).fill(0));
-  for (let i = 0; i < n; i++) {
-    U[i][i] = 1;
-  }
+export function solveCroutDecomposition(
+  A_input: number[][],
+  b_input: number[],
+): CroutResult {
+  const n = A_input.length;
+
+  let A = A_input.map((row) => [...row]);
+  let b = [...b_input];
+
+  const L: number[][] = Array.from({ length: n }, () => new Array(n).fill(0));
+  const U: number[][] = Array.from({ length: n }, () => new Array(n).fill(0));
+
+  // set diagonal U bernilai 1 sesuai kaidah reduksi crout
+  for (let i = 0; i < n; i++) U[i][i] = 1;
 
   const decompositionSteps: CroutStep[] = [];
 
-  // Proses eliminasi bergantian kolom L dan baris U
+  // hitung matriks segitiga bawah L dan segitiga atas U bergantian per kolom
   for (let j = 0; j < n; j++) {
-    // 1. Hitung kolom ke-j untuk matriks L
+    // hitung elemen kolom j untuk matriks L (baris j sampai n-1)
     for (let i = j; i < n; i++) {
-      let sum = 0;
+      let sumL = 0;
       for (let k = 0; k < j; k++) {
-        sum += L[i][k] * U[k][j];
+        sumL += L[i][k] * U[k][j];
       }
-      L[i][j] = A[i][j] - sum;
+      L[i][j] = A[i][j] - sumL;
+    }
+
+    // cek kebutuhan pertukaran baris jika pivot L[j][j] mendekati nol
+    if (Math.abs(L[j][j]) < 1e-10) {
+      let swapRow = -1;
+
+      // cari baris di bawahnya yang punya nilai tidak nol pada kolom j
+      for (let k = j + 1; k < n; k++) {
+        if (Math.abs(L[k][j]) > 1e-10) {
+          swapRow = k;
+          break;
+        }
+      }
+
+      if (swapRow === -1) {
+        throw new Error(
+          `matriks singular elemen kolom ${j + 1} berharga nol semua di bawah diagonal`,
+        );
+      }
+
+      // tukar seluruh baris j dengan swapRow pada A, b, dan L
+      // (kolom L yang sudah terhitung untuk baris ini ikut tertukar)
+      [A[j], A[swapRow]] = [A[swapRow], A[j]];
+      [b[j], b[swapRow]] = [b[swapRow], b[j]];
+      [L[j], L[swapRow]] = [L[swapRow], L[j]];
 
       decompositionSteps.push({
-        type: "kolom_l",
-        label: `hitung L[${i + 1}][${j + 1}]`,
-        detail: `L[${i + 1}][${j + 1}] = A[${i + 1}][${j + 1}] - sum(L[${i + 1}][k] * U[k][${j + 1}]) = ${A[i][j]} - ${sum} = ${L[i][j].toFixed(4)}`,
+        type: "pivot",
+        label: `pivoting tukar baris ${j + 1} ke baris ${swapRow + 1}`,
+        detail: `elemen pivot l${j + 1}${j + 1} bernilai 0, baris ditukar dengan baris ${swapRow + 1} yang memiliki elemen tidak nol pada kolom ${j + 1}`,
       });
     }
 
-    // Cek apakah elemen diagonal L bernilai nol untuk menghindari pembagian nol
-    if (Math.abs(L[j][j]) < 1e-12) {
-      throw new Error(
-        `matriks singular atau memerlukan pivoting. elemen diagonal L[${j + 1}][${j + 1}] berharga 0.`,
-      );
-    }
-
-    // 2. Hitung baris ke-j untuk matriks U
+    // hitung elemen baris j untuk matriks U (kolom j+1 sampai n-1)
     for (let i = j + 1; i < n; i++) {
-      let sum = 0;
+      let sumU = 0;
       for (let k = 0; k < j; k++) {
-        sum += L[j][k] * U[k][i];
+        sumU += L[j][k] * U[k][i];
       }
-      U[j][i] = (A[j][i] - sum) / L[j][j];
-
-      decompositionSteps.push({
-        type: "baris_u",
-        label: `hitung U[${j + 1}][${i + 1}]`,
-        detail: `U[${j + 1}][${i + 1}] = (A[${j + 1}][${i + 1}] - sum(L[${j + 1}][k] * U[k][${i + 1}])) / L[${j + 1}][${j + 1}] = (${A[j][i]} - ${sum}) / ${L[j][j].toFixed(4)} = ${U[j][i].toFixed(4)}`,
-      });
+      U[j][i] = (A[j][i] - sumU) / L[j][j];
     }
+
+    decompositionSteps.push({
+      type: "kolom_l",
+      label: `iterasi langkah ke ${j + 1}`,
+      detail: `menghitung komponen pengali l dan u pada kolom baris elemen diagonal ke ${j + 1}`,
+    });
   }
 
-  // 3. Penyulihan Maju: Ly = b
+  // proses penyulihan maju Ly sama dengan b untuk mencari nilai y
   const y = new Array(n).fill(0);
   const forwardSteps: string[] = [];
+
   for (let i = 0; i < n; i++) {
     let sum = 0;
+    const parts: string[] = [];
     for (let j = 0; j < i; j++) {
       sum += L[i][j] * y[j];
+      parts.push(`${fmt(L[i][j])} murni dikali ${fmt(y[j])}`);
     }
     y[i] = (b[i] - sum) / L[i][i];
-    forwardSteps.push(
-      `y${i + 1} = (${b[i]} - ${sum.toFixed(4)}) / ${L[i][i].toFixed(4)} = ${y[i].toFixed(4)}`,
-    );
+
+    if (parts.length === 0) {
+      forwardSteps.push(
+        `y${i + 1} = ${fmt(b[i])} / ${fmt(L[i][i])} = ${fmt(y[i])}`,
+      );
+    } else {
+      forwardSteps.push(
+        `y${i + 1} = ${fmt(b[i])} dikurangi ${parts.join(" dikurangi ")} kemudian dibagi ${fmt(L[i][i])} = ${fmt(y[i])}`,
+      );
+    }
   }
 
-  // 4. Penyulihan Mundur: Ux = y
+  // proses penyulihan mundur Ux sama dengan y untuk mencari nilai x
   const x = new Array(n).fill(0);
   const backwardSteps: string[] = [];
+
   for (let i = n - 1; i >= 0; i--) {
     let sum = 0;
+    const parts: string[] = [];
     for (let j = i + 1; j < n; j++) {
       sum += U[i][j] * x[j];
+      parts.push(`${fmt(U[i][j])} murni dikali ${fmt(x[j])}`);
     }
     x[i] = y[i] - sum;
-    backwardSteps.push(
-      `x${i + 1} = ${y[i].toFixed(4)} - ${sum.toFixed(4)} = ${x[i].toFixed(4)}`,
-    );
+
+    if (parts.length === 0) {
+      backwardSteps.push(`x${i + 1} = ${fmt(y[i])}`);
+    } else {
+      backwardSteps.push(
+        `x${i + 1} = ${fmt(y[i])} dikurangi ${parts.join(" dikurangi ")} = ${fmt(x[i])}`,
+      );
+    }
   }
 
-  // Khusus untuk tampilan log penyulihan mundur di frontend agar berurutan dari x3 ke x1
   backwardSteps.reverse();
 
-  return {
-    L,
-    U,
-    y,
-    x,
-    forwardSteps,
-    backwardSteps,
-    decompositionSteps,
-  };
+  return { L, U, y, x, forwardSteps, backwardSteps, decompositionSteps };
 }

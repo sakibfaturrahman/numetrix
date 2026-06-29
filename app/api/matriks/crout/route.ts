@@ -15,7 +15,7 @@ export async function POST(req: Request) {
       );
     }
 
-    // Validasi dimensi ukuran array
+    // Validasi dimensi ukuran array persegi
     const n = matrixA.length;
     if (
       !Array.isArray(matrixA) ||
@@ -33,7 +33,7 @@ export async function POST(req: Request) {
       );
     }
 
-    // Validasi tipe data elemen angka
+    // Validasi tipe data elemen angka murni
     const allNumbers =
       matrixA.every((row: number[]) =>
         row.every((v: unknown) => typeof v === "number" && isFinite(v)),
@@ -46,11 +46,10 @@ export async function POST(req: Request) {
       );
     }
 
-    // Putus referensi memori objek dari frontend memakai deep clone murni
+    // Isolasi penuh state memori objek request menggunakan deep clone
     const cleanMatrixA = JSON.parse(JSON.stringify(matrixA));
     const cleanVectorB = JSON.parse(JSON.stringify(vectorB));
 
-    // Eksekusi fungsi komputasi matematika crout sekuensial
     const result = solveCroutDecomposition(cleanMatrixA, cleanVectorB);
 
     return NextResponse.json(result);
