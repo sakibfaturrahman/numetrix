@@ -2,8 +2,8 @@
 
 export interface MatrixStep {
   label: string;
-  matrixA: number[][]; // Sisi kiri [A] → menuju Identitas I
-  matrixInv: number[][]; // Sisi kanan [I] → menuju Invers A⁻¹
+  matrixA: number[][]; // Sisi kiri A menuju Identitas I
+  matrixInv: number[][]; // Sisi kanan I menuju Invers A⁻¹
 }
 
 export interface BalikanResult {
@@ -12,10 +12,8 @@ export interface BalikanResult {
   solution: number[];
 }
 
-/**
- * Menyelesaikan SPL Ax = b menggunakan metode Matriks Balikan.
- * Versi Murni Gauss-Jordan (Sesuai hitungan Excel tanpa Pivoting)
- */
+// Menyelesaikan SPL Ax = b menggunakan metode Matriks Balikan.
+// Versi Murni Gauss-Jordan Sesuai hitungan Excel tanpa Pivoting.
 export function solveInverseGaussJordan(
   A_input: number[][],
   b_input: number[],
@@ -32,25 +30,25 @@ export function solveInverseGaussJordan(
 
   const steps: MatrixStep[] = [];
 
-  // Simpan kondisi awal [A | I]
+  // Simpan kondisi awal matriks augmented
   steps.push({
     label: "matriks augmented awal [a | i]",
     matrixA: A.map((r) => [...r]),
     matrixInv: Inv.map((r) => [...r]),
   });
 
-  // === FASE ELIMINASI GAUSS-JORDAN (TANPA PIVOTING, SEPERTI EXCEL) ===
+  // Fase eliminasi Gauss-Jordan tanpa pivoting seperti Excel
   for (let i = 0; i < n; i++) {
     const pivot = A[i][i];
 
-    // Cek jika pivot nol (tidak bisa membagi langsung)
+    // Cek jika pivot nol tidak bisa membagi langsung
     if (Math.abs(pivot) < 1e-10) {
       throw new Error(
         `pivot berharga 0 pada baris ${i + 1}. metode tanpa pivoting tidak dapat melanjutkan perhitungan.`,
       );
     }
 
-    // --- Normalisasi Baris Pivot: Bagi baris dengan nilai pivotnya ---
+    // Normalisasi baris pivot bagi baris dengan nilai pivotnya
     if (Math.abs(pivot - 1) > 1e-10) {
       for (let j = 0; j < n; j++) {
         A[i][j] /= pivot;
@@ -58,25 +56,25 @@ export function solveInverseGaussJordan(
       }
 
       steps.push({
-        label: `normalisasi baris ${i + 1}: b${i + 1} × 1/${pivot % 1 === 0 ? pivot.toFixed(0) : pivot.toFixed(2)}`,
+        label: `normalisasi baris ${i + 1}: b${i + 1} ÷ ${pivot % 1 === 0 ? pivot.toFixed(0) : pivot.toFixed(2)}`,
         matrixA: A.map((r) => [...r]),
         matrixInv: Inv.map((r) => [...r]),
       });
     }
 
-    // --- Eliminasi Elemen di Kolom i (Atas & Bawah) ---
+    // Eliminasi elemen di kolom i atas dan bawah baris pivot
     for (let k = 0; k < n; k++) {
       if (k === i) continue; // Skip baris pivot itu sendiri
 
       const factor = A[k][i];
-      if (Math.abs(factor) < 1e-14) continue; // Sudah nol, skip
+      if (Math.abs(factor) < 1e-14) continue; // Sudah nol skip
 
       for (let j = 0; j < n; j++) {
         A[k][j] -= factor * A[i][j];
         Inv[k][j] -= factor * Inv[i][j];
       }
 
-      // Format label langkah OBE agar mirip dengan catatan Excel-mu
+      // Format label langkah OBE sesuai catatan Excel
       const sign = factor > 0 ? "-" : "+";
       const absFactor = Math.abs(factor);
       const factorStr =
@@ -94,7 +92,7 @@ export function solveInverseGaussJordan(
     }
   }
 
-  // === HITUNG SOLUSI AKHIR: x = A⁻¹ · b ===
+  // Hitung solusi akhir x = A⁻¹ · b
   const solution = new Array(n).fill(0);
   for (let i = 0; i < n; i++) {
     for (let j = 0; j < n; j++) {

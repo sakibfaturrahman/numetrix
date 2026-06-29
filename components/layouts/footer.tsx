@@ -54,68 +54,16 @@ const Footer = () => {
               ))}
             </ul>
           </div>
-
-          {/* Social/Repo Column */}
-          <div className="flex flex-col items-start">
-            <h4 className="text-[10px] font-bold text-black uppercase tracking-widest mb-6">
-              sumber daya
-            </h4>
-            <ul className="space-y-4">
-              {["dokumentasi", "github repo", "api docs"].map((item) => (
-                <li key={item}>
-                  <a
-                    href="#"
-                    className="text-xs text-gray-400 hover:text-black transition-colors italic lowercase"
-                  >
-                    {item}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </div>
         </div>
 
         {/* Bottom Section: Developer Profiles & Copyright */}
         <div className="flex flex-col lg:flex-row justify-between items-center pt-10 border-t border-gray-100 gap-10">
-          {/* Developer Profiles Area */}
-          <div className="flex flex-wrap justify-center lg:justify-start gap-8">
-            {developers.map((dev) => (
-              <motion.div
-                key={dev.initial}
-                whileHover={{ y: -2 }}
-                className="flex items-center gap-3 group cursor-default"
-              >
-                <div className="w-10 h-10 rounded-full bg-stone-100 flex items-center justify-center overflow-hidden border border-gray-100 group-hover:border-black group-hover:bg-black transition-all duration-500">
-                  <span className="text-[10px] font-bold text-gray-400 group-hover:text-white">
-                    {dev.initial}
-                  </span>
-                </div>
-                <div className="text-left">
-                  <p className="text-[9px] font-bold text-black uppercase tracking-widest">
-                    {dev.role}
-                  </p>
-                  <p className="text-xs text-gray-400 group-hover:text-black transition-colors lowercase">
-                    {dev.name}
-                  </p>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-
           {/* Copyright & Links */}
           <div className="flex flex-col items-center lg:items-end gap-4">
             <p className="text-[10px] font-bold text-gray-300 uppercase tracking-[0.2em] text-center lg:text-right">
               © 2026 perjuangan university <br className="md:hidden" /> of
               tasikmalaya
             </p>
-            <div className="flex gap-2">
-              <button className="px-5 py-2 rounded-full bg-white text-[9px] font-bold uppercase tracking-widest hover:bg-black hover:text-white transition-all border border-gray-100">
-                github
-              </button>
-              <button className="px-5 py-2 rounded-full bg-white text-[9px] font-bold uppercase tracking-widest hover:bg-black hover:text-white transition-all border border-gray-100">
-                linkedin
-              </button>
-            </div>
           </div>
         </div>
       </div>

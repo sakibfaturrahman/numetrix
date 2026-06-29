@@ -17,18 +17,6 @@ const Hero = () => {
         >
           kelompok 4
         </motion.span>
-
-        <motion.a
-          initial={{ opacity: 0, x: 10 }}
-          animate={{ opacity: 1, x: 0 }}
-          href="#"
-          className="text-gray-400 text-xs md:text-sm font-medium hover:text-black transition-all flex items-center gap-1 group"
-        >
-          bantuan teori
-          <span className="text-xl group-hover:translate-x-1 transition-transform">
-            →
-          </span>
-        </motion.a>
       </div>
 
       <div className="flex flex-col lg:flex-row items-center justify-between gap-10">

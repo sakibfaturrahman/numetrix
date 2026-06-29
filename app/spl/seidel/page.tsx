@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/table";
 import { GuideModal } from "@/components/common/guide-modal";
 import { ErrorMessage } from "@/components/common/error-message";
+import { DecimalControl } from "@/components/common/decimal-control"; // Import komponen baru
 import {
   RotateCcw,
   Play,
@@ -28,7 +29,6 @@ import {
   CheckCircle2,
 } from "lucide-react";
 
-// Interface harus sama persis dengan yang dikirim dari backend
 interface GaussSeidelIteration {
   iterasi: number;
   x: number;
@@ -47,11 +47,13 @@ const GaussSeidelPage = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [iterations, setIterations] = useState<GaussSeidelIteration[]>([]);
+  
+  // State untuk mengontrol jumlah angka di belakang koma (Default = 4 sesuai Excel)
+  const [decimals, setDecimals] = useState<number>(4);
 
-  // Default tebakan awal P0 = (1, 2, 2) sesuai pengerjaan Excel kamu
+  // Default tebakan awal P0 = (1, 2, 2)
   const [initialGuess, setInitialGuess] = useState({ x: 1, y: 2, z: 2 });
 
-  // Matriks SPL Sesuai Gambar Excel
   const matrixA = [
     [4, -1, 1],
     [4, -8, 1],
@@ -72,7 +74,6 @@ const GaussSeidelPage = () => {
   const lastIter =
     iterations.length > 0 ? iterations[iterations.length - 1] : null;
 
-  // Cek apakah seluruh variabel sudah mencapai status konvergen murni
   const isConverged =
     lastIter !== null &&
     lastIter.isConvergedX &&
@@ -84,7 +85,6 @@ const GaussSeidelPage = () => {
     setError(null);
     setIterations([]);
     try {
-      // UBAH BAGIAN URL INI MENJADI /api/spl/seidel
       const response = await fetch("/api/spl/seidel", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -99,7 +99,6 @@ const GaussSeidelPage = () => {
       const data = await response.json();
 
       if (!response.ok) {
-        // Tangkap error dari backend jika ada masalah (contoh: 404 Not Found / 500 Server Error)
         console.error("Backend Error:", data);
         setError(
           data.error || `Gagal mengambil data. Status: ${response.status}`,
@@ -107,7 +106,6 @@ const GaussSeidelPage = () => {
         return;
       }
 
-      // Memastikan data yang diterima adalah array (mencegah blank/error map)
       if (!Array.isArray(data)) {
         throw new Error(
           "Format respons dari server tidak valid (bukan array).",
@@ -188,7 +186,6 @@ const GaussSeidelPage = () => {
 
               <motion.div className="w-full md:w-[350px] flex justify-center items-center">
                 <div className="relative w-full aspect-square">
-                  {/* Pastikan gambar ini ada di public/images/ atau ganti path jika perlu */}
                   <Image
                     src="/images/Mathematics-pana.svg"
                     alt="Gauss Seidel Illustration"
@@ -334,8 +331,9 @@ const GaussSeidelPage = () => {
                         <span className="text-[10px] text-gray-400 font-mono">
                           {label} =
                         </span>
+                        {/* Menyesuaikan format angka panel dengan state decimals */}
                         <span className="text-sm font-mono font-bold text-emerald-400">
-                          {val.toFixed(4)}
+                          {val.toFixed(decimals)}
                         </span>
                       </div>
                     ))}
@@ -365,25 +363,32 @@ const GaussSeidelPage = () => {
             </Card>
           </div>
 
-          {/* TABEL ITERASI DENGAN TRUE / FALSE */}
+          {/* TABEL ITERASI */}
           <section className="mt-12">
-            <div className="flex items-center gap-4 mb-8">
+            <div className="flex flex-col md:flex-row md:items-center gap-4 mb-8">
               <div className="flex items-center gap-2">
                 <ListOrdered className="w-5 h-5 text-black" />
                 <h2 className="text-xl font-bold tracking-tighter">
                   tabel lelaran seidel.
                 </h2>
               </div>
-              <div className="h-[1px] flex-1 bg-gray-200"></div>
-              {iterations.length > 0 && (
-                <motion.span
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  className="px-4 py-1.5 bg-black text-white text-[10px] font-bold tracking-widest rounded-full uppercase"
-                >
-                  {iterations.length - 1} lelaran selesai
-                </motion.span>
-              )}
+              
+              <div className="h-[1px] flex-1 bg-gray-200 hidden md:block"></div>
+
+              {/* DECIMAL CONTROL COMPONENT */}
+              <div className="flex items-center gap-3">
+                <DecimalControl decimals={decimals} setDecimals={setDecimals} />
+
+                {iterations.length > 0 && (
+                  <motion.span
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="px-4 py-1.5 bg-black text-white text-[10px] font-bold tracking-widest rounded-full uppercase shrink-0"
+                  >
+                    {iterations.length - 1} lelaran selesai
+                  </motion.span>
+                )}
+              </div>
             </div>
 
             <Card className="rounded-[35px] border-none shadow-xl overflow-hidden bg-white">
@@ -428,14 +433,15 @@ const GaussSeidelPage = () => {
                             <TableCell className="text-center font-bold text-gray-400 py-3.5">
                               {row.iterasi}
                             </TableCell>
+                            {/* Menggunakan state decimals untuk mengatur presisi koma di tabel */}
                             <TableCell className="text-center font-mono font-bold text-sm py-3.5 text-black">
-                              {row.x.toFixed(4)}
+                              {row.x.toFixed(decimals)}
                             </TableCell>
                             <TableCell className="text-center font-mono font-bold text-sm py-3.5 text-black">
-                              {row.y.toFixed(4)}
+                              {row.y.toFixed(decimals)}
                             </TableCell>
                             <TableCell className="text-center font-mono font-bold text-sm py-3.5 text-black">
-                              {row.z.toFixed(4)}
+                              {row.z.toFixed(decimals)}
                             </TableCell>
 
                             <TableCell className="text-center py-3.5">

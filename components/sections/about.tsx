@@ -90,9 +90,6 @@ const About = () => {
               </p>
             </div>
           </div>
-          <button className="px-8 py-4 bg-gray-50 hover:bg-black hover:text-white transition-all rounded-full text-[10px] font-bold uppercase tracking-widest">
-            lihat repositori →
-          </button>
         </motion.div>
       </div>
     </div>

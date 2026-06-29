@@ -77,9 +77,14 @@ const MethodShortcuts = () => {
         <h3 className="text-white text-lg font-bold mb-4">
           pelajari teori numerik lebih dalam
         </h3>
-        <button className="text-white/50 hover:text-white text-xs transition-colors">
+        <a
+          href="https://google.com"
+          target="_blank"
+          rel="noreferrer"
+          className="text-white/50 hover:text-white text-xs transition-colors inline-block"
+        >
           baca selengkapnya
-        </button>
+        </a>
       </div>
     </div>
   );
