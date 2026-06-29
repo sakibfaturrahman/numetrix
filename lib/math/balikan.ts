@@ -13,7 +13,7 @@ export interface BalikanResult {
 }
 
 // Menyelesaikan SPL Ax = b menggunakan metode Matriks Balikan.
-// Versi Murni Gauss-Jordan Sesuai hitungan Excel tanpa Pivoting.
+// Murni menggunakan presisi floating-point asli tanpa pembatasan nilai internal.
 export function solveInverseGaussJordan(
   A_input: number[][],
   b_input: number[],
@@ -23,7 +23,7 @@ export function solveInverseGaussJordan(
   let A = A_input.map((row) => [...row]);
   let b = [...b_input];
 
-  // Inisialisasi sisi kanan sebagai matriks identitas I
+  // Inisialisasi sisi kanan sebagai matriks identitas I murni
   let Inv: number[][] = Array.from({ length: n }, (_, i) =>
     Array.from({ length: n }, (_, j) => (i === j ? 1 : 0)),
   );
@@ -37,24 +37,25 @@ export function solveInverseGaussJordan(
     matrixInv: Inv.map((r) => [...r]),
   });
 
-  // Fase eliminasi Gauss-Jordan tanpa pivoting seperti Excel
+  // Fase eliminasi Gauss-Jordan murni tanpa partial pivoting
   for (let i = 0; i < n; i++) {
     const pivot = A[i][i];
 
-    // Cek jika pivot nol tidak bisa membagi langsung
+    // Cek jika pivot mendekati nol untuk menghindari pembagian dengan nol
     if (Math.abs(pivot) < 1e-10) {
       throw new Error(
         `pivot berharga 0 pada baris ${i + 1}. metode tanpa pivoting tidak dapat melanjutkan perhitungan.`,
       );
     }
 
-    // Normalisasi baris pivot bagi baris dengan nilai pivotnya
+    // Normalisasi baris pivot: bagi seluruh elemen baris dengan nilai pivot asli
     if (Math.abs(pivot - 1) > 1e-10) {
       for (let j = 0; j < n; j++) {
         A[i][j] /= pivot;
         Inv[i][j] /= pivot;
       }
 
+      // Pembulatan .toFixed() hanya digunakan pada label teks log langkah, nilai matriks tetap presisi tinggi
       steps.push({
         label: `normalisasi baris ${i + 1}: b${i + 1} ÷ ${pivot % 1 === 0 ? pivot.toFixed(0) : pivot.toFixed(2)}`,
         matrixA: A.map((r) => [...r]),
@@ -62,19 +63,22 @@ export function solveInverseGaussJordan(
       });
     }
 
-    // Eliminasi elemen di kolom i atas dan bawah baris pivot
+    // Eliminasi elemen kolom i di atas dan di bawah baris pivot utama
     for (let k = 0; k < n; k++) {
-      if (k === i) continue; // Skip baris pivot itu sendiri
+      if (k === i) continue; // Lewati baris pivot itu sendiri
 
       const factor = A[k][i];
-      if (Math.abs(factor) < 1e-14) continue; // Sudah nol skip
+      if (Math.abs(factor) < 1e-11) continue; // Jika elemen sudah nol, lewati
 
       for (let j = 0; j < n; j++) {
         A[k][j] -= factor * A[i][j];
         Inv[k][j] -= factor * Inv[i][j];
       }
 
-      // Format label langkah OBE sesuai catatan Excel
+      // Pembersihan nilai sisa floating point agar kolom tereliminasi menjadi murni 0
+      A[k][i] = 0;
+
+      // Format string log langkah OBE tanpa mengubah nilai asli komputasi numerik
       const sign = factor > 0 ? "-" : "+";
       const absFactor = Math.abs(factor);
       const factorStr =
@@ -92,7 +96,7 @@ export function solveInverseGaussJordan(
     }
   }
 
-  // Hitung solusi akhir x = A⁻¹ · b
+  // Hitung solusi akhir menggunakan matriks invers dengan tingkat presisi tinggi: x = A⁻¹ · b
   const solution = new Array(n).fill(0);
   for (let i = 0; i < n; i++) {
     for (let j = 0; j < n; j++) {
