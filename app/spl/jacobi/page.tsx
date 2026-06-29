@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/table";
 import { GuideModal } from "@/components/common/guide-modal";
 import { ErrorMessage } from "@/components/common/error-message";
+import { DecimalControl } from "@/components/common/decimal-control"; // Import komponen global
 import {
   RotateCcw,
   Play,
@@ -46,6 +47,9 @@ const JacobiPage = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [iterations, setIterations] = useState<JacobiIteration[]>([]);
+
+  // State untuk fitur Decimal Control (Default 6 angka di belakang koma)
+  const [decimals, setDecimals] = useState<number>(6);
 
   // Default nilai awal P0 sesuai pengerjaan Excel = (1, 2, 2)
   const [initialGuess, setInitialGuess] = useState({ x: 1, y: 2, z: 2 });
@@ -316,8 +320,9 @@ const JacobiPage = () => {
                         <span className="text-[10px] text-gray-400 font-mono">
                           {label} =
                         </span>
+                        {/* Tersinkronisasi dengan state decimals */}
                         <span className="text-sm font-mono font-bold text-orange-400">
-                          {val.toFixed(6)}
+                          {val.toFixed(decimals)}
                         </span>
                       </div>
                     ))}
@@ -349,23 +354,30 @@ const JacobiPage = () => {
 
           {/* TABEL ITERASI */}
           <section className="mt-12">
-            <div className="flex items-center gap-4 mb-8">
+            <div className="flex flex-col md:flex-row md:items-center gap-4 mb-8">
               <div className="flex items-center gap-2">
                 <ListOrdered className="w-5 h-5 text-black" />
                 <h2 className="text-xl font-bold tracking-tighter">
                   tabel lelaran numerik.
                 </h2>
               </div>
-              <div className="h-[1px] flex-1 bg-gray-200"></div>
-              {iterations.length > 0 && (
-                <motion.span
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  className="px-4 py-1.5 bg-black text-white text-[10px] font-bold tracking-widest rounded-full uppercase"
-                >
-                  {iterations.length - 1} lelaran selesai
-                </motion.span>
-              )}
+
+              <div className="h-[1px] flex-1 bg-gray-200 hidden md:block"></div>
+
+              <div className="flex items-center gap-3">
+                {/* PEMANGGILAN KOMPONEN DECIMAL CONTROL */}
+                <DecimalControl decimals={decimals} setDecimals={setDecimals} />
+
+                {iterations.length > 0 && (
+                  <motion.span
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="px-4 py-2 bg-black text-white text-[10px] font-bold tracking-widest rounded-full uppercase shrink-0"
+                  >
+                    {iterations.length - 1} lelaran selesai
+                  </motion.span>
+                )}
+              </div>
             </div>
 
             <Card className="rounded-[35px] border-none shadow-xl overflow-hidden bg-white">
@@ -410,14 +422,15 @@ const JacobiPage = () => {
                             <TableCell className="text-center font-bold text-gray-400 py-3.5">
                               {row.iterasi}
                             </TableCell>
+                            {/* Menggunakan state decimals untuk pemotongan angka */}
                             <TableCell className="text-center font-mono font-bold text-sm py-3.5 text-black">
-                              {row.x.toFixed(6)}
+                              {row.x.toFixed(decimals)}
                             </TableCell>
                             <TableCell className="text-center font-mono font-bold text-sm py-3.5 text-black">
-                              {row.y.toFixed(6)}
+                              {row.y.toFixed(decimals)}
                             </TableCell>
                             <TableCell className="text-center font-mono font-bold text-sm py-3.5 text-black">
-                              {row.z.toFixed(6)}
+                              {row.z.toFixed(decimals)}
                             </TableCell>
 
                             <TableCell className="text-center py-3.5">

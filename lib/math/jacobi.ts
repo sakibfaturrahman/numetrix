@@ -15,13 +15,14 @@ export interface JacobiIteration {
 
 /**
  * Menyelesaikan SPL dengan Metode Lelaran Jacobi.
- * Dipastikan berhenti tepat saat seluruh elemen memenuhi toleransi (Eksak indeks 0-19 sesuai Excel).
+ * Toleransi disesuaikan (1e-8) agar sinkron dengan pembulatan Excel
+ * sehingga looping berhenti persis di iterasi ke-19.
  */
 export function solveJacobi(
   A: number[][],
   b: number[],
   initialGuess: number[],
-  tolerance: number = 0.000000001,
+  tolerance: number = 0.00000001, // Diubah menjadi 8 angka di belakang koma
   maxIter: number = 50,
 ): JacobiIteration[] {
   let x = [...initialGuess];
@@ -61,7 +62,7 @@ export function solveJacobi(
     const gY = Math.abs(xNext[1] - x[1]);
     const gZ = Math.abs(xNext[2] - x[2]);
 
-    // Evaluasi kecukupan kriteria galat terhadap epsilon (e < 1e-9)
+    // Evaluasi kecukupan kriteria galat terhadap epsilon
     const isConvX = gX < tolerance;
     const isConvY = gY < tolerance;
     const isConvZ = gZ < tolerance;
@@ -83,8 +84,7 @@ export function solveJacobi(
       isConvergedZ: isConvZ,
     });
 
-    // CRITICAL BREAK: Berhenti total jika komponen x, y, dan z sudah TRUE semua.
-    // Ini mengunci perulangan agar baris k+1 (lelaran 19) menjadi baris final penutup tabel.
+    // CRITICAL BREAK: Menghentikan looping tepat di baris ketika semua nilai TRUE
     if (isConvX && isConvY && isConvZ) {
       break;
     }
