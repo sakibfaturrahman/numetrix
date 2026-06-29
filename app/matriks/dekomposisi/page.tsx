@@ -8,8 +8,17 @@ import Footer from "@/components/layouts/footer";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { GuideModal } from "@/components/common/guide-modal";
 import { ErrorMessage } from "@/components/common/error-message";
+import { DecimalControl } from "@/components/common/decimal-control";
 import {
   RotateCcw,
   ArrowRight,
@@ -37,25 +46,21 @@ interface LUResult {
   backwardSteps: string[];
 }
 
-const fmt = (n: number, dec = 2): string => {
-  if (typeof n !== "number" || isNaN(n)) return "0";
-  const r = parseFloat(n.toFixed(dec));
-  return Number.isInteger(r) ? r.toString() : r.toFixed(dec);
-};
-
 const DekomposisiLUPage = () => {
   const [showGuide, setShowGuide] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [results, setResults] = useState<LUResult | null>(null);
-  const [showSteps, setShowSteps] = useState(true); // Default true agar langsung terlihat detailnya
+  const [showSteps, setShowSteps] = useState(true);
+  const [decimals, setDecimals] = useState<number>(2);
 
-  const [matrixA, setMatrixA] = useState([
-    [1, 1, -1],
-    [2, 2, 1],
-    [-1, 1, 1],
+  // Menggunakan string agar kotak form input bisa dikosongkan dengan leluasa saat diketik
+  const [matrixA, setMatrixA] = useState<(string | number)[][]>([
+    [1, 1, 1],
+    [2, 4, 2],
+    [-1, 5, 8],
   ]);
-  const [vectorB, setVectorB] = useState([1, 5, 1]);
+  const [vectorB, setVectorB] = useState<(string | number)[]>([6, 16, 31]);
 
   useEffect(() => {
     const hasSeenGuide = localStorage.getItem("hasSeenLUDecompositionGuide");
@@ -69,25 +74,23 @@ const DekomposisiLUPage = () => {
 
   const handleAChange = (row: number, col: number, value: string) => {
     const newMatrix = matrixA.map((r) => [...r]);
-    const parsed = parseFloat(value);
-    newMatrix[row][col] = isNaN(parsed) ? 0 : parsed;
+    newMatrix[row][col] = value;
     setMatrixA(newMatrix);
   };
 
   const handleBChange = (row: number, value: string) => {
     const newVector = [...vectorB];
-    const parsed = parseFloat(value);
-    newVector[row] = isNaN(parsed) ? 0 : parsed;
+    newVector[row] = value;
     setVectorB(newVector);
   };
 
   const resetInput = () => {
     setMatrixA([
-      [0, 0, 0],
-      [0, 0, 0],
-      [0, 0, 0],
+      ["", "", ""],
+      ["", "", ""],
+      ["", "", ""],
     ]);
-    setVectorB([0, 0, 0]);
+    setVectorB(["", "", ""]);
     setResults(null);
     setError(null);
   };
@@ -97,11 +100,21 @@ const DekomposisiLUPage = () => {
     setError(null);
     setResults(null);
 
+    const parsedMatrixA = matrixA.map((row) =>
+      row.map((val) => (val === "" ? 0 : parseFloat(val.toString()) || 0)),
+    );
+    const parsedVectorB = vectorB.map((val) =>
+      val === "" ? 0 : parseFloat(val.toString()) || 0,
+    );
+
     try {
       const response = await fetch("/api/matriks/dekomposisi", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ matrixA, vectorB }),
+        body: JSON.stringify({
+          matrixA: parsedMatrixA,
+          vectorB: parsedVectorB,
+        }),
       });
 
       const data = await response.json();
@@ -119,6 +132,11 @@ const DekomposisiLUPage = () => {
     }
   };
 
+  const fmt = (n: number, places = decimals) => {
+    if (typeof n !== "number" || isNaN(n)) return "0";
+    return n.toFixed(places);
+  };
+
   return (
     <div className="antialiased bg-[#f2f2f2] min-h-screen font-sans lowercase selection:bg-emerald-100 selection:text-emerald-900">
       <Navbar />
@@ -131,7 +149,7 @@ const DekomposisiLUPage = () => {
         theoryOverview="metode ini memfaktorkan A = LU. L adalah matriks segitiga bawah dengan diagonal 1, dan U adalah matriks segitiga atas hasil eliminasi Gauss. solusi dicari melalui dua tahap: penyulihan maju (Ly = b) untuk mencari y, lalu penyulihan mundur (Ux = y) untuk mencari x."
         steps={[
           "masukkan koefisien matriks a pada grid kiri.",
-          "isi konstanta hasil pada vektor b di kolom kanan.",
+          "isi konstanta hasil pada vektor b di kolom kanan (vertikal).",
           "klik 'jalankan dekomposisi' untuk melihat proses faktorisasi L dan U, penyulihan maju Ly=b, serta penyulihan mundur Ux=y.",
         ]}
         onClose={handleCloseGuide}
@@ -206,17 +224,17 @@ const DekomposisiLUPage = () => {
               </div>
 
               <div className="flex flex-col md:flex-row items-center justify-center gap-8">
-                {/* Matrix A */}
+                {/* Matrix A Inputs */}
                 <div className="grid grid-cols-3 gap-3 p-4 bg-gray-50 rounded-[30px] border border-gray-100 relative">
                   <span className="absolute -top-6 left-2 text-[10px] font-bold text-gray-300 uppercase tracking-widest">
                     koefisien [A]
                   </span>
                   {matrixA.map((row, r) =>
-                    row.map((_, c) => (
+                    row.map((val, c) => (
                       <Input
                         key={`a-${r}-${c}`}
                         type="number"
-                        value={matrixA[r][c]}
+                        value={val}
                         onChange={(e) => handleAChange(r, c, e.target.value)}
                         className="w-16 h-16 md:w-20 md:h-20 text-center text-lg font-bold rounded-2xl border-none shadow-sm bg-white focus-visible:ring-emerald-500"
                       />
@@ -226,19 +244,24 @@ const DekomposisiLUPage = () => {
 
                 <ArrowRight className="text-gray-200 w-8 h-8 hidden md:block shrink-0" />
 
-                {/* Vector B */}
-                <div className="grid grid-cols-1 gap-3 p-4 bg-emerald-50/50 rounded-[30px] border border-emerald-100 relative">
-                  <span className="absolute -top-6 left-2 text-[10px] font-bold text-emerald-300 uppercase tracking-widest">
+                {/* Vector B Inputs (Vertikal Kolom) */}
+                <div className="flex flex-col gap-3 p-4 bg-emerald-50/50 rounded-[30px] border border-emerald-100 relative">
+                  <span className="absolute -top-6 left-2 text-[10px] font-bold text-emerald-300 uppercase tracking-widest font-sans">
                     hasil [b]
                   </span>
                   {vectorB.map((val, r) => (
-                    <Input
-                      key={`b-${r}`}
-                      type="number"
-                      value={val}
-                      onChange={(e) => handleBChange(r, e.target.value)}
-                      className="w-16 h-16 md:w-20 md:h-20 text-center text-lg font-bold rounded-2xl border-none shadow-sm bg-white text-emerald-600 focus-visible:ring-emerald-500"
-                    />
+                    <div key={`b-row-${r}`} className="flex items-center gap-2">
+                      <span className="text-[10px] font-mono text-gray-400 w-4">
+                        b{r + 1}
+                      </span>
+                      <Input
+                        key={`b-${r}`}
+                        type="number"
+                        value={val}
+                        onChange={(e) => handleBChange(r, e.target.value)}
+                        className="w-16 h-16 md:w-20 md:h-20 text-center text-lg font-bold rounded-2xl border-none shadow-sm bg-white text-emerald-600 focus-visible:ring-emerald-500"
+                      />
+                    </div>
                   ))}
                 </div>
               </div>
@@ -306,7 +329,7 @@ const DekomposisiLUPage = () => {
                 animate={{ opacity: 1, y: 0 }}
                 className="mt-12 space-y-12"
               >
-                {/* DETAIL LOG ELIMINASI LANGKAH DEMI LANGKAH JAUH LEBIH DETAIL SEPERTI EXCEL */}
+                {/* LOG TAHAPAN ELIMINASI */}
                 <div>
                   <button
                     onClick={() => setShowSteps((v) => !v)}
@@ -354,12 +377,10 @@ const DekomposisiLUPage = () => {
                               </span>
                             </div>
 
-                            {/* Tampilan Grid Berdampingan Representasi Excel */}
                             <div className="flex flex-col md:flex-row items-center justify-center gap-6 bg-gray-50/50 p-6 rounded-[25px] border border-gray-100 overflow-x-auto">
-                              {/* Blok Matriks L */}
                               <div className="flex flex-col items-center">
                                 <span className="text-[10px] font-bold text-emerald-500 font-mono uppercase mb-2">
-                                  Matriks L (Segitiga Bawah)
+                                  Matriks L
                                 </span>
                                 <div className="grid grid-cols-3 gap-2">
                                   {step.matrixL.map((row, ri) =>
@@ -383,10 +404,9 @@ const DekomposisiLUPage = () => {
                                 ×
                               </div>
 
-                              {/* Blok Matriks U */}
                               <div className="flex flex-col items-center">
                                 <span className="text-[10px] font-bold text-blue-500 font-mono uppercase mb-2">
-                                  Matriks U (Segitiga Atas)
+                                  Matriks U
                                 </span>
                                 <div className="grid grid-cols-3 gap-2">
                                   {step.matrixU.map((row, ri) =>
@@ -413,16 +433,23 @@ const DekomposisiLUPage = () => {
                   </AnimatePresence>
                 </div>
 
-                {/* HASIL AKHIR MATRIKS NYATAKAN A = LU */}
+                {/* FAKTORISASI AKHIR */}
                 <div>
-                  <div className="flex items-center gap-4 mb-6">
-                    <h2 className="text-xl font-bold tracking-tighter text-black">
-                      faktorisasi akhir murni (A = LU).
-                    </h2>
-                    <div className="h-[1px] flex-1 bg-gray-200" />
+                  <div className="flex items-center justify-between gap-4 mb-6">
+                    <div className="flex items-center gap-4 flex-1">
+                      <h2 className="text-xl font-bold tracking-tighter text-black">
+                        faktorisasi akhir murni (A = LU).
+                      </h2>
+                      <div className="h-[1px] flex-1 bg-gray-200" />
+                    </div>
+                    {/* DECIMAL CONTROL INTERAKTIF UNTUK HASIL AKHIR */}
+                    <DecimalControl
+                      decimals={decimals}
+                      setDecimals={setDecimals}
+                    />
                   </div>
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    {/* Matriks L */}
                     <Card className="p-8 rounded-[40px] border-none shadow-lg bg-white relative overflow-hidden">
                       <span className="absolute top-4 right-6 text-[60px] font-black text-gray-50 select-none">
                         L
@@ -448,7 +475,6 @@ const DekomposisiLUPage = () => {
                       </div>
                     </Card>
 
-                    {/* Matriks U */}
                     <Card className="p-8 rounded-[40px] border-none shadow-lg bg-white relative overflow-hidden">
                       <span className="absolute top-4 right-6 text-[60px] font-black text-gray-50 select-none">
                         U
@@ -476,7 +502,7 @@ const DekomposisiLUPage = () => {
                   </div>
                 </div>
 
-                {/* PROSES PENYULIHAN MAJU & MUNDUR SESUAI TABEL EXCEL */}
+                {/* SUBSTITUSI ALJABAR */}
                 <div>
                   <div className="flex items-center gap-4 mb-6">
                     <h2 className="text-xl font-bold tracking-tighter text-black">
@@ -485,7 +511,6 @@ const DekomposisiLUPage = () => {
                     <div className="h-[1px] flex-1 bg-gray-200" />
                   </div>
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    {/* Forward Substitution: Ly = b */}
                     <Card className="p-8 md:p-10 rounded-[40px] border-none shadow-lg bg-white">
                       <div className="flex items-center gap-3 mb-6">
                         <div className="w-10 h-10 bg-emerald-600 rounded-xl flex items-center justify-center shrink-0">
@@ -534,7 +559,6 @@ const DekomposisiLUPage = () => {
                       </div>
                     </Card>
 
-                    {/* Backward Substitution: Ux = y */}
                     <Card className="p-8 md:p-10 rounded-[40px] border-none shadow-lg bg-white">
                       <div className="flex items-center gap-3 mb-6">
                         <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shrink-0">
@@ -585,7 +609,7 @@ const DekomposisiLUPage = () => {
                   </div>
                 </div>
 
-                {/* SOLUSI UTAMA (KESIMPULAN) */}
+                {/* SOLUSI KESIMPULAN */}
                 <Card className="p-10 rounded-[45px] border-none shadow-2xl bg-black text-white text-center relative overflow-hidden">
                   <h4 className="text-[10px] font-bold uppercase tracking-[0.4em] text-emerald-400 mb-8">
                     solusi akhir sistem persamaan linear
@@ -617,7 +641,7 @@ const DekomposisiLUPage = () => {
                   </div>
                   <div className="bg-white/50 border border-dashed border-gray-300 rounded-[40px] h-60 flex items-center justify-center text-gray-400 italic text-sm text-center px-10">
                     hasil dekomposisi L dan U, proses penyulihan maju, serta
-                    penyulihan mundur akan ditampilkan di sini.
+                    jawaban akhir akan dipetakan di sini.
                   </div>
                 </div>
               )

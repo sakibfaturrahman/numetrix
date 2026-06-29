@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { GuideModal } from "@/components/common/guide-modal";
 import { ErrorMessage } from "@/components/common/error-message";
+import { DecimalControl } from "@/components/common/decimal-control";
 import {
   RotateCcw,
   HelpCircle,
@@ -36,12 +37,6 @@ interface CroutResult {
   backwardSteps: string[];
   decompositionSteps: CroutStep[];
 }
-
-const fmt = (n: number, dec = 2): string => {
-  if (typeof n !== "number" || !isFinite(n)) return "0";
-  const r = parseFloat(n.toFixed(dec));
-  return Number.isInteger(r) ? r.toString() : r.toFixed(dec);
-};
 
 const stepTypeStyle: Record<
   CroutStep["type"],
@@ -72,18 +67,16 @@ const ReduksiCroutPage = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [results, setResults] = useState<CroutResult | null>(null);
-  const [showSteps, setShowSteps] = useState(true); // Set default true agar langsung terbuka
+  const [showSteps, setShowSteps] = useState(true);
+  const [decimals, setDecimals] = useState<number>(2);
 
-  // Default input disesuaikan awal SPL sebelum ditukar di Excel:
-  // x1 + x2 - x3 = 1
-  // 2x1 + 2x2 + x3 = 5
-  // -x1 + x2 + x3 = 1
-  const [matrixA, setMatrixA] = useState([
+  // Inisialisasi menggunakan string murni agar form ketikan fleksibel
+  const [matrixA, setMatrixA] = useState<(string | number)[][]>([
     [1, 1, -1],
     [2, 2, 1],
     [-1, 1, 1],
   ]);
-  const [vectorB, setVectorB] = useState([1, 5, 1]);
+  const [vectorB, setVectorB] = useState<(string | number)[]>([1, 5, 1]);
 
   useEffect(() => {
     const hasSeenGuide = localStorage.getItem("hasSeenCroutGuide");
@@ -97,25 +90,23 @@ const ReduksiCroutPage = () => {
 
   const handleAChange = (row: number, col: number, value: string) => {
     const newMatrix = matrixA.map((r) => [...r]);
-    const parsed = parseFloat(value);
-    newMatrix[row][col] = isNaN(parsed) ? 0 : parsed;
+    newMatrix[row][col] = value;
     setMatrixA(newMatrix);
   };
 
   const handleBChange = (row: number, value: string) => {
     const newVector = [...vectorB];
-    const parsed = parseFloat(value);
-    newVector[row] = isNaN(parsed) ? 0 : parsed;
+    newVector[row] = value;
     setVectorB(newVector);
   };
 
   const resetInput = () => {
     setMatrixA([
-      [0, 0, 0],
-      [0, 0, 0],
-      [0, 0, 0],
+      ["", "", ""],
+      ["", "", ""],
+      ["", "", ""],
     ]);
-    setVectorB([0, 0, 0]);
+    setVectorB(["", "", ""]);
     setResults(null);
     setError(null);
   };
@@ -125,11 +116,21 @@ const ReduksiCroutPage = () => {
     setError(null);
     setResults(null);
 
+    const parsedMatrixA = matrixA.map((row) =>
+      row.map((val) => (val === "" ? 0 : parseFloat(val.toString()) || 0)),
+    );
+    const parsedVectorB = vectorB.map((val) =>
+      val === "" ? 0 : parseFloat(val.toString()) || 0,
+    );
+
     try {
       const response = await fetch("/api/matriks/crout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ matrixA, vectorB }),
+        body: JSON.stringify({
+          matrixA: parsedMatrixA,
+          vectorB: parsedVectorB,
+        }),
       });
 
       const data = await response.json();
@@ -145,6 +146,11 @@ const ReduksiCroutPage = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const fmt = (n: number, places = decimals) => {
+    if (typeof n !== "number" || isNaN(n)) return "0";
+    return n.toFixed(places);
   };
 
   return (
@@ -226,11 +232,11 @@ const ReduksiCroutPage = () => {
                     matriks [A]
                   </span>
                   {matrixA.map((row, r) =>
-                    row.map((_, c) => (
+                    row.map((val, c) => (
                       <Input
                         key={`a-${r}-${c}`}
                         type="number"
-                        value={matrixA[r][c]}
+                        value={val}
                         onChange={(e) => handleAChange(r, c, e.target.value)}
                         className="w-16 h-16 md:w-20 md:h-20 text-center text-lg font-bold rounded-2xl border-none shadow-sm bg-white focus-visible:ring-pink-500"
                       />
@@ -238,26 +244,29 @@ const ReduksiCroutPage = () => {
                   )}
                 </div>
 
-                <div className="flex flex-col items-center gap-1">
-                  <span className="text-[10px] font-black text-gray-200 uppercase tracking-widest">
-                    hasil
-                  </span>
-                  <div className="h-20 w-[2px] bg-gray-100 hidden md:block" />
-                </div>
+                <div className="h-40 w-[2px] bg-gray-100 hidden md:block" />
 
-                {/* Vector B */}
-                <div className="grid grid-cols-1 gap-3 p-4 bg-pink-50/50 rounded-[30px] border border-pink-100 relative">
-                  <span className="absolute -top-6 left-2 text-[10px] font-bold text-pink-300 uppercase tracking-widest">
+                {/* Vector B Kolom Vertikal Sejati */}
+                <div className="flex flex-col gap-3 p-4 bg-pink-50/50 rounded-[30px] border border-pink-100 relative">
+                  <span className="absolute -top-6 left-2 text-[10px] font-bold text-pink-300 uppercase tracking-widest font-sans">
                     vektor [b]
                   </span>
                   {vectorB.map((val, r) => (
-                    <Input
-                      key={`b-${r}`}
-                      type="number"
-                      value={vectorB[r]}
-                      onChange={(e) => handleBChange(r, e.target.value)}
-                      className="w-16 h-16 md:w-20 md:h-20 text-center text-lg font-bold rounded-2xl border-none shadow-sm bg-white text-pink-600 focus-visible:ring-pink-500"
-                    />
+                    <div
+                      key={`b-container-${r}`}
+                      className="flex items-center gap-2"
+                    >
+                      <span className="text-[10px] font-mono text-gray-400 w-4">
+                        b{r + 1}
+                      </span>
+                      <Input
+                        key={`b-${r}`}
+                        type="number"
+                        value={val}
+                        onChange={(e) => handleBChange(r, e.target.value)}
+                        className="w-16 h-16 md:w-20 md:h-20 text-center text-lg font-bold rounded-2xl border-none shadow-sm bg-white text-pink-600 focus-visible:ring-pink-500"
+                      />
+                    </div>
                   ))}
                 </div>
               </div>
@@ -298,7 +307,7 @@ const ReduksiCroutPage = () => {
                       urutan eliminasi:
                     </p>
                     <p className="text-[11px] font-mono text-gray-400 leading-relaxed">
-                      Baris-1 U → Kolom-1 L → Baris-2 U → Kolom-2 L → ... dst.
+                      Kolom-1 L → Baris-1 U → Kolom-2 L → Baris-2 U → ... dst.
                     </p>
                   </div>
                 </div>
@@ -316,7 +325,7 @@ const ReduksiCroutPage = () => {
                 animate={{ opacity: 1, y: 0 }}
                 className="mt-12 space-y-12"
               >
-                {/* LOG TAHAPAN ELIMINASI REDUKSI CROUT VERSI DETIL EXCEL */}
+                {/* LOG TAHAPAN ELIMINASI */}
                 {results.decompositionSteps &&
                   results.decompositionSteps.length > 0 && (
                     <div>
@@ -340,7 +349,7 @@ const ReduksiCroutPage = () => {
                                   key={index}
                                   initial={{ opacity: 0, x: -10 }}
                                   animate={{ opacity: 1, x: 0 }}
-                                  transition={{ delay: index * 0.04 }}
+                                  transition={{ delay: index * 0.02 }}
                                   className="bg-white p-6 md:p-8 rounded-[35px] shadow-md border border-gray-100 flex flex-col gap-4"
                                 >
                                   <div className="flex items-center justify-between border-b border-gray-100 pb-3 flex-wrap gap-2">
@@ -358,7 +367,6 @@ const ReduksiCroutPage = () => {
                                       </p>
                                     </div>
                                   </div>
-
                                   <div
                                     className={`p-4 rounded-2xl font-mono text-xs border ${style.bg} ${style.border} ${style.text} leading-loose break-words`}
                                   >
@@ -374,14 +382,22 @@ const ReduksiCroutPage = () => {
                     </div>
                   )}
 
-                {/* FAKTORISASI AKHIR MATRIKS L & U CROUT */}
+                {/* FAKTORISASI AKHIR MATRIKS L & U */}
                 <div>
-                  <div className="flex items-center gap-4 mb-6">
-                    <h2 className="text-xl font-bold tracking-tighter text-black">
-                      hasil akhir reduksi matriks (A = LU).
-                    </h2>
-                    <div className="h-[1px] flex-1 bg-gray-200" />
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                    <div className="flex items-center gap-4 flex-1">
+                      <h2 className="text-xl font-bold tracking-tighter text-black">
+                        hasil akhir reduksi matriks (A = LU).
+                      </h2>
+                      <div className="h-[1px] flex-1 bg-gray-200" />
+                    </div>
+                    {/* SINKRONISASI DENGAN CONTROL DESIMAL GLOBAL */}
+                    <DecimalControl
+                      decimals={decimals}
+                      setDecimals={setDecimals}
+                    />
                   </div>
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                     {/* Matriks L */}
                     <Card className="p-8 rounded-[40px] border-none shadow-lg bg-white relative overflow-hidden">
@@ -437,9 +453,8 @@ const ReduksiCroutPage = () => {
                   </div>
                 </div>
 
-                {/* PENYULIHAN MAJU & MUNDUR SEPERTI DI EXCEL */}
+                {/* PENYULIHAN */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                  {/* Forward Substitution: Ly = b */}
                   <Card className="p-8 md:p-10 rounded-[40px] border-none shadow-lg bg-white">
                     <div className="flex items-center gap-3 mb-6">
                       <div className="w-10 h-10 bg-pink-600 rounded-xl flex items-center justify-center shrink-0">
@@ -454,7 +469,6 @@ const ReduksiCroutPage = () => {
                         </p>
                       </div>
                     </div>
-
                     <div className="space-y-3">
                       {results.forwardSteps?.map((step, i) => (
                         <div
@@ -470,7 +484,6 @@ const ReduksiCroutPage = () => {
                         </div>
                       ))}
                     </div>
-
                     <div className="flex gap-2 mt-6 border-t border-gray-100 pt-4">
                       {results.y.map((val, i) => (
                         <div
@@ -488,7 +501,6 @@ const ReduksiCroutPage = () => {
                     </div>
                   </Card>
 
-                  {/* Backward Substitution: Ux = y */}
                   <Card className="p-8 md:p-10 rounded-[40px] border-none shadow-lg bg-white">
                     <div className="flex items-center gap-3 mb-6">
                       <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shrink-0">
@@ -503,7 +515,6 @@ const ReduksiCroutPage = () => {
                         </p>
                       </div>
                     </div>
-
                     <div className="space-y-3">
                       {results.backwardSteps?.map((step, i) => (
                         <div
@@ -519,7 +530,6 @@ const ReduksiCroutPage = () => {
                         </div>
                       ))}
                     </div>
-
                     <div className="flex gap-2 mt-6 border-t border-gray-100 pt-4">
                       {results.x.map((val, i) => (
                         <div
@@ -538,7 +548,7 @@ const ReduksiCroutPage = () => {
                   </Card>
                 </div>
 
-                {/* KESIMPULAN AKHIR SOLUSI */}
+                {/* KESIMPULAN AKHIR */}
                 <Card className="p-10 rounded-[45px] border-none shadow-2xl bg-black text-white text-center relative overflow-hidden">
                   <div className="relative z-10">
                     <CheckCircle2 className="w-12 h-12 text-pink-500 mx-auto mb-6" />
@@ -587,7 +597,7 @@ const ReduksiCroutPage = () => {
         onOpenChange={setShowGuide}
         title="panduan crout"
         description="pahami skema pemfaktoran crout untuk efisiensi perhitungan spl."
-        theoryOverview="metode ini memfaktorkan A = LU dengan syarat elemen diagonal matriks U bernilai satu (uᵢᵢ = 1). penghitungan bergantian: baris U → kolom L → baris U → ..."
+        theoryOverview="metode ini memfaktorkan A = LU dengan syarat elemen diagonal matriks U bernilai satu (uᵢᵢ = 1). penghitungan bergantian: kolom L → baris U → kolom L → ..."
         steps={[
           "masukkan koefisien variabel pada matriks A.",
           "isi konstanta hasil pada vektor b.",

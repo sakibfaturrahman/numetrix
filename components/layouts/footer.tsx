@@ -61,8 +61,8 @@ const Footer = () => {
           {/* Copyright & Links */}
           <div className="flex flex-col items-center lg:items-end gap-4">
             <p className="text-[10px] font-bold text-gray-300 uppercase tracking-[0.2em] text-center lg:text-right">
-              © 2026 perjuangan university <br className="md:hidden" /> of
-              tasikmalaya
+              © 2026 universitas perjuangan | kelompok 4{" "}
+              <br className="md:hidden" /> of tasikmalaya
             </p>
           </div>
         </div>

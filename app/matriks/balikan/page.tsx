@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ErrorMessage } from "@/components/common/error-message";
 import { GuideModal } from "@/components/common/guide-modal";
+import { DecimalControl } from "@/components/common/decimal-control";
 import {
   RotateCcw,
   Play,
@@ -38,13 +39,14 @@ const MatriksBalikanPage = () => {
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<CalculationResult | null>(null);
 
-  // Default value based on Buku Contoh 4.9
-  const [matrixA, setMatrixA] = useState([
+  const [decimals, setDecimals] = useState<number>(2);
+
+  const [matrixA, setMatrixA] = useState<(string | number)[][]>([
     [1, -1, 2],
     [3, 0, 1],
     [1, 0, 2],
   ]);
-  const [vectorB, setVectorB] = useState([5, 10, 5]);
+  const [vectorB, setVectorB] = useState<(string | number)[]>([5, 10, 5]);
 
   useEffect(() => {
     const hasSeenGuide = localStorage.getItem("hasSeenInverseGuide");
@@ -58,23 +60,23 @@ const MatriksBalikanPage = () => {
 
   const handleAChange = (row: number, col: number, value: string) => {
     const newMatrix = matrixA.map((r) => [...r]);
-    newMatrix[row][col] = value === "" ? 0 : parseFloat(value);
+    newMatrix[row][col] = value;
     setMatrixA(newMatrix);
   };
 
   const handleBChange = (row: number, value: string) => {
     const newVector = [...vectorB];
-    newVector[row] = value === "" ? 0 : parseFloat(value);
+    newVector[row] = value;
     setVectorB(newVector);
   };
 
   const resetInput = () => {
     setMatrixA([
-      [0, 0, 0],
-      [0, 0, 0],
-      [0, 0, 0],
+      ["", "", ""],
+      ["", "", ""],
+      ["", "", ""],
     ]);
-    setVectorB([0, 0, 0]);
+    setVectorB(["", "", ""]);
     setResults(null);
     setError(null);
   };
@@ -83,11 +85,22 @@ const MatriksBalikanPage = () => {
     setLoading(true);
     setError(null);
     setResults(null);
+
+    const parsedMatrixA = matrixA.map((row) =>
+      row.map((val) => (val === "" ? 0 : parseFloat(val.toString()) || 0)),
+    );
+    const parsedVectorB = vectorB.map((val) =>
+      val === "" ? 0 : parseFloat(val.toString()) || 0,
+    );
+
     try {
       const response = await fetch("/api/matriks/balikan", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ matrixA, vectorB }),
+        body: JSON.stringify({
+          matrixA: parsedMatrixA,
+          vectorB: parsedVectorB,
+        }),
       });
       const data = await response.json();
 
@@ -103,11 +116,10 @@ const MatriksBalikanPage = () => {
     }
   };
 
-  const fmt = (n: number, decimals = 4) => {
-    const rounded = parseFloat(n.toFixed(decimals));
-    return Number.isInteger(rounded)
-      ? rounded.toString()
-      : rounded.toFixed(decimals);
+  // Fungsi formatting angka diperbaiki murni mengikat konsisten ke toFixed desimal aktif
+  const fmt = (n: number, places = decimals) => {
+    if (typeof n !== "number" || isNaN(n)) return "0";
+    return n.toFixed(places);
   };
 
   return (
@@ -207,11 +219,11 @@ const MatriksBalikanPage = () => {
                     matriks a
                   </span>
                   {matrixA.map((row, r) =>
-                    row.map((_, c) => (
+                    row.map((val, c) => (
                       <Input
                         key={`a-${r}-${c}`}
                         type="number"
-                        value={matrixA[r][c]}
+                        value={val}
                         onChange={(e) => handleAChange(r, c, e.target.value)}
                         className="w-16 h-16 md:w-20 md:h-20 text-center text-lg font-bold rounded-2xl border-none shadow-sm bg-white focus-visible:ring-blue-500"
                       />
@@ -222,18 +234,26 @@ const MatriksBalikanPage = () => {
                 <div className="h-40 w-[2px] bg-gray-100 hidden md:block" />
 
                 {/* Vector B Inputs */}
-                <div className="grid grid-cols-1 gap-3 p-4 bg-blue-50/50 rounded-[30px] border border-blue-100 relative">
+                <div className="flex flex-col gap-3 p-4 bg-blue-50/50 rounded-[30px] border border-blue-100 relative">
                   <span className="absolute -top-6 left-2 text-[10px] font-bold text-blue-300 uppercase tracking-widest font-sans">
                     vektor b
                   </span>
                   {vectorB.map((val, r) => (
-                    <Input
-                      key={`b-${r}`}
-                      type="number"
-                      value={val}
-                      onChange={(e) => handleBChange(r, e.target.value)}
-                      className="w-16 h-16 md:w-20 md:h-20 text-center text-lg font-bold rounded-2xl border-none shadow-sm bg-white text-blue-600 focus-visible:ring-blue-500"
-                    />
+                    <div
+                      key={`b-container-${r}`}
+                      className="flex items-center gap-2"
+                    >
+                      <span className="text-[10px] font-mono text-gray-400 w-4">
+                        b{r + 1}
+                      </span>
+                      <Input
+                        key={`b-${r}`}
+                        type="number"
+                        value={val}
+                        onChange={(e) => handleBChange(r, e.target.value)}
+                        className="w-16 h-16 md:w-20 md:h-20 text-center text-lg font-bold rounded-2xl border-none shadow-sm bg-white text-blue-600 focus-visible:ring-blue-500"
+                      />
+                    </div>
                   ))}
                 </div>
               </div>
@@ -320,12 +340,19 @@ const MatriksBalikanPage = () => {
 
                 {/* Matriks Invers Akhir A⁻¹ */}
                 <div>
-                  <div className="flex items-center gap-4 mb-6">
-                    <h2 className="text-xl font-bold tracking-tighter text-black">
-                      matriks invers a⁻¹.
-                    </h2>
-                    <div className="h-[1px] flex-1 bg-gray-200" />
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                    <div className="flex items-center gap-4 flex-1">
+                      <h2 className="text-xl font-bold tracking-tighter text-black">
+                        matriks invers a⁻¹.
+                      </h2>
+                      <div className="h-[1px] flex-1 bg-gray-200" />
+                    </div>
+                    <DecimalControl
+                      decimals={decimals}
+                      setDecimals={setDecimals}
+                    />
                   </div>
+
                   <Card className="p-8 md:p-10 rounded-[40px] border-none shadow-lg bg-white">
                     <div className="flex items-start gap-6">
                       <div className="w-10 h-10 rounded-2xl bg-blue-50 flex items-center justify-center shrink-0 mt-1">
@@ -399,7 +426,7 @@ const MatriksBalikanPage = () => {
                                   key={`a-${ri}-${ci}`}
                                   className="w-10 h-10 flex items-center justify-center text-[10px] font-mono font-bold bg-white rounded-xl shadow-sm border border-gray-100"
                                 >
-                                  {fmt(c, 2)}
+                                  {fmt(c)}
                                 </div>
                               )),
                             )}
@@ -420,7 +447,7 @@ const MatriksBalikanPage = () => {
                                   key={`inv-${ri}-${ci}`}
                                   className="w-10 h-10 flex items-center justify-center text-[10px] font-mono font-bold bg-blue-50 text-blue-600 rounded-xl shadow-sm border border-blue-100"
                                 >
-                                  {fmt(c, 2)}
+                                  {fmt(c)}
                                 </div>
                               )),
                             )}

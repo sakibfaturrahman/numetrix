@@ -7,7 +7,7 @@ export async function POST(req: Request) {
   try {
     const { matrixA, vectorB } = await req.json();
 
-    // --- Validasi keberadaan data ---
+    // Validasi keberadaan data
     if (!matrixA || !vectorB) {
       return NextResponse.json(
         { error: "data tidak lengkap. mohon isi matriks a dan vektor b." },
@@ -15,9 +15,8 @@ export async function POST(req: Request) {
       );
     }
 
-    // --- Validasi dimensi ---
+    // Validasi dimensi
     const n = matrixA.length;
-
     if (
       !Array.isArray(matrixA) ||
       !Array.isArray(vectorB) ||
@@ -34,9 +33,9 @@ export async function POST(req: Request) {
       );
     }
 
-    // --- Validasi semua elemen adalah angka ---
+    // Validasi elemen numerik angka murni
     const allNumbers =
-      matrixA.every((row: unknown[]) =>
+      matrixA.every((row: number[]) =>
         row.every((v) => typeof v === "number" && isFinite(v)),
       ) && vectorB.every((v: unknown) => typeof v === "number" && isFinite(v));
 
@@ -50,19 +49,17 @@ export async function POST(req: Request) {
       );
     }
 
-    // --- Jalankan dekomposisi LU ---
-    // Catatan: validasi pivot nol dilakukan DALAM fungsi solveLUDecomposition
-    // karena pivot bisa berubah selama proses eliminasi (partial pivoting).
-    // Tidak bisa dicek di sini sebelum eliminasi berjalan.
-    const result = solveLUDecomposition(matrixA, vectorB);
+    // Deep clone data input agar mutasi array aman di memori backend
+    const cleanMatrixA = JSON.parse(JSON.stringify(matrixA));
+    const cleanVectorB = JSON.parse(JSON.stringify(vectorB));
 
+    const result = solveLUDecomposition(cleanMatrixA, cleanVectorB);
     return NextResponse.json(result);
   } catch (error: unknown) {
     const message =
       error instanceof Error
         ? error.message
         : "terjadi kesalahan tak terduga dalam perhitungan.";
-
     return NextResponse.json({ error: message }, { status: 400 });
   }
 }

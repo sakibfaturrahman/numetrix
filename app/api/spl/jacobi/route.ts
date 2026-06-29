@@ -33,13 +33,18 @@ export async function POST(req: Request) {
       }
     }
 
-    // Gunakan parameter toleransi 1e-9 agar tepat berhenti di lelaran ke-19 sesuai excel
+    // Putus hubungan referensi data objek dari frontend menggunakan deep clone
+    const cleanMatrixA = JSON.parse(JSON.stringify(matrixA));
+    const cleanVectorB = JSON.parse(JSON.stringify(vectorB));
+    const cleanGuess = JSON.parse(JSON.stringify(initialGuess || [1, 2, 2]));
+
+    // Gunakan parameter toleransi 1e-9 murni agar sinkron dengan batasan kriteria lelaran
     const history = solveJacobi(
-      matrixA,
-      vectorB,
-      initialGuess || [0, 0, 0],
+      cleanMatrixA,
+      cleanVectorB,
+      cleanGuess,
       0.000000001,
-      maxIter || 30,
+      maxIter || 50,
     );
 
     return NextResponse.json(history);

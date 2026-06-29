@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/table";
 import { GuideModal } from "@/components/common/guide-modal";
 import { ErrorMessage } from "@/components/common/error-message";
-import { DecimalControl } from "@/components/common/decimal-control"; // Import komponen global
+import { DecimalControl } from "@/components/common/decimal-control";
 import {
   RotateCcw,
   Play,
@@ -47,19 +47,22 @@ const JacobiPage = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [iterations, setIterations] = useState<JacobiIteration[]>([]);
-
-  // State untuk fitur Decimal Control (Default 6 angka di belakang koma)
   const [decimals, setDecimals] = useState<number>(6);
 
-  // Default nilai awal P0 sesuai pengerjaan Excel = (1, 2, 2)
-  const [initialGuess, setInitialGuess] = useState({ x: 1, y: 2, z: 2 });
-
-  const matrixA = [
+  // Nilai awal matriks A dan b diubah berbentuk string-number agar input bisa dikosongkan saat mengetik
+  const [matrixA, setMatrixA] = useState<(string | number)[][]>([
     [4, -1, 1],
     [4, -8, 1],
     [-2, 1, 5],
-  ];
-  const vectorB = [7, -21, 15];
+  ]);
+  const [vectorB, setVectorB] = useState<(string | number)[]>([7, -21, 15]);
+  const [initialGuess, setInitialGuess] = useState<{
+    [key: string]: string | number;
+  }>({
+    x: 1,
+    y: 2,
+    z: 2,
+  });
 
   useEffect(() => {
     const hasSeenGuide = localStorage.getItem("hasSeenJacobiGuide");
@@ -71,29 +74,82 @@ const JacobiPage = () => {
     localStorage.setItem("hasSeenJacobiGuide", "true");
   };
 
+  const handleAChange = (row: number, col: number, value: string) => {
+    const newMatrix = matrixA.map((r) => [...r]);
+    newMatrix[row][col] = value;
+    setMatrixA(newMatrix);
+  };
+
+  const handleBChange = (row: number, value: string) => {
+    const newVector = [...vectorB];
+    newVector[row] = value;
+    setVectorB(newVector);
+  };
+
+  const handleGuessChange = (axis: string, value: string) => {
+    setInitialGuess({ ...initialGuess, [axis]: value });
+  };
+
   const lastIter =
     iterations.length > 0 ? iterations[iterations.length - 1] : null;
 
-  // Diperbarui agar mengecek boolean convergence hasil backend (1e-9) bukan lagi < 0.001
   const isConverged =
     lastIter !== null &&
     lastIter.isConvergedX &&
     lastIter.isConvergedY &&
     lastIter.isConvergedZ;
 
+  // Fungsi string builder otomatis untuk menampilkan rumus fungsi lelaran secara dinamis
+  const generateFormulaText = (index: number, variableName: string) => {
+    const bVal = parseFloat(vectorB[index]?.toString()) || 0;
+    const diagVal = parseFloat(matrixA[index][index]?.toString()) || 1;
+
+    const vars = ["x", "y", "z"];
+    let parts: string[] = [];
+
+    parts.push(bVal.toString());
+
+    vars.forEach((v, j) => {
+      if (j !== index) {
+        const coef = parseFloat(matrixA[index][j]?.toString()) || 0;
+        if (coef > 0) {
+          parts.push(`- ${coef === 1 ? "" : coef}${v}`);
+        } else if (coef < 0) {
+          parts.push(`+ ${Math.abs(coef) === 1 ? "" : Math.abs(coef)}${v}`);
+        }
+      }
+    });
+
+    return `${variableName} = (${parts.join(" ")}) / ${diagVal}`;
+  };
+
   const calculateJacobi = async () => {
     setLoading(true);
     setError(null);
     setIterations([]);
+
+    // Parsing data string dari form menuju tipe data number murni sebelum dikirim ke API
+    const parsedMatrixA = matrixA.map((row) =>
+      row.map((val) => (val === "" ? 0 : parseFloat(val.toString()) || 0)),
+    );
+    const parsedVectorB = vectorB.map((val) =>
+      val === "" ? 0 : parseFloat(val.toString()) || 0,
+    );
+    const parsedGuess = ["x", "y", "z"].map((axis) =>
+      initialGuess[axis] === ""
+        ? 0
+        : parseFloat(initialGuess[axis].toString()) || 0,
+    );
+
     try {
       const response = await fetch("/api/spl/jacobi", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          matrixA,
-          vectorB,
-          initialGuess: [initialGuess.x, initialGuess.y, initialGuess.z],
-          maxIter: 30, // Mengakomodasi limit toleransi konvergensi ke-19
+          matrixA: parsedMatrixA,
+          vectorB: parsedVectorB,
+          initialGuess: parsedGuess,
+          maxIter: 50,
         }),
       });
 
@@ -113,7 +169,13 @@ const JacobiPage = () => {
   };
 
   const resetInput = () => {
-    setInitialGuess({ x: 1, y: 2, z: 2 });
+    setMatrixA([
+      ["", "", ""],
+      ["", "", ""],
+      ["", "", ""],
+    ]);
+    setVectorB(["", "", ""]);
+    setInitialGuess({ x: "", y: "", z: "" });
     setIterations([]);
     setError(null);
   };
@@ -129,9 +191,9 @@ const JacobiPage = () => {
         description="pahami mekanisme iterasi simultan sebelum menjalankan simulasi."
         theoryOverview="nilai variabel baru dihitung berdasarkan nilai variabel dari iterasi sebelumnya secara serentak. proses berhenti jika galat lebih kecil dari toleransi."
         steps={[
-          "masukkan tebakan awal (p₀) untuk memulai lelaran pertama.",
-          "perhatikan fungsi lelaran yang telah disederhanakan dari persamaan spl asli.",
-          "klik 'mulai lelaran' untuk melihat proses konvergensi pada tabel.",
+          "masukkan koefisien pada matriks A dan elemen konstanta pada vektor b.",
+          "isi nilai tebakan awal (p₀) untuk memulai lelaran pertama.",
+          "klik 'mulai lelaran' untuk melihat proses konvergensi dinamis pada tabel.",
         ]}
         onClose={handleCloseGuide}
       />
@@ -187,7 +249,7 @@ const JacobiPage = () => {
           </section>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* INPUT PERSAMAAN & TEBAKAN AWAL */}
+            {/* INPUT PERSAMAAN & TEBAKAN AWAL DINAMIS */}
             <Card className="lg:col-span-2 p-8 md:p-12 rounded-[40px] border-none shadow-xl bg-white flex flex-col gap-10">
               <div className="flex justify-between items-center">
                 <div>
@@ -195,7 +257,8 @@ const JacobiPage = () => {
                     persamaan lelaran.
                   </h2>
                   <p className="text-xs text-gray-400">
-                    transformasi matriks [A] ke fungsi lelaran numerik.
+                    transformasi matriks [A] ke fungsi lelaran numerik secara
+                    otomatis.
                   </p>
                 </div>
                 <Button
@@ -209,30 +272,68 @@ const JacobiPage = () => {
               </div>
 
               <div className="space-y-4">
+                {/* RUMUS OTOMATIS BERDASARKAN INPUT GRID */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100">
                     <span className="text-[10px] font-bold text-gray-300 uppercase block mb-2 tracking-widest text-center">
                       fungsi x
                     </span>
-                    <p className="font-mono text-xs text-center tracking-tighter font-bold text-orange-600">
-                      x = (7 + y − z) / 4
+                    <p className="font-mono text-xs text-center tracking-tighter font-bold text-orange-600 truncate">
+                      {generateFormulaText(0, "x")}
                     </p>
                   </div>
                   <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100">
                     <span className="text-[10px] font-bold text-gray-300 uppercase block mb-2 tracking-widest text-center">
                       fungsi y
                     </span>
-                    <p className="font-mono text-xs text-center tracking-tighter font-bold text-orange-600">
-                      y = (−21 − 4x − z) / −8
+                    <p className="font-mono text-xs text-center tracking-tighter font-bold text-orange-600 truncate">
+                      {generateFormulaText(1, "y")}
                     </p>
                   </div>
                   <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100">
                     <span className="text-[10px] font-bold text-gray-300 uppercase block mb-2 tracking-widest text-center">
                       fungsi z
                     </span>
-                    <p className="font-mono text-xs text-center tracking-tighter font-bold text-orange-600">
-                      z = (15 + 2x − y) / 5
+                    <p className="font-mono text-xs text-center tracking-tighter font-bold text-orange-600 truncate">
+                      {generateFormulaText(2, "z")}
                     </p>
+                  </div>
+                </div>
+
+                {/* MATRIX GRID INPUT DUAL VERTIKAL */}
+                <div className="flex flex-col md:flex-row items-center justify-center gap-8 pt-6">
+                  <div className="grid grid-cols-3 gap-3 p-4 bg-gray-50 rounded-[30px] border border-gray-100 relative">
+                    <span className="absolute -top-6 left-2 text-[10px] font-bold text-gray-300 uppercase tracking-widest font-sans">
+                      matriks a
+                    </span>
+                    {matrixA.map((row, r) =>
+                      row.map((val, c) => (
+                        <Input
+                          key={`a-${r}-${c}`}
+                          type="number"
+                          value={val}
+                          onChange={(e) => handleAChange(r, c, e.target.value)}
+                          className="w-16 h-16 md:w-20 md:h-20 text-center text-lg font-bold rounded-2xl border-none shadow-sm bg-white focus-visible:ring-orange-500"
+                        />
+                      )),
+                    )}
+                  </div>
+
+                  <div className="h-40 w-[2px] bg-gray-100 hidden md:block" />
+
+                  <div className="flex flex-col gap-3 p-4 bg-orange-50/30 rounded-[30px] border border-orange-100 relative">
+                    <span className="absolute -top-6 left-2 text-[10px] font-bold text-orange-400 uppercase tracking-widest font-sans">
+                      vektor b
+                    </span>
+                    {vectorB.map((val, r) => (
+                      <Input
+                        key={`b-${r}`}
+                        type="number"
+                        value={val}
+                        onChange={(e) => handleBChange(r, e.target.value)}
+                        className="w-16 h-16 md:w-20 md:h-20 text-center text-lg font-bold rounded-2xl border-none shadow-sm bg-white text-orange-600 focus-visible:ring-orange-500"
+                      />
+                    ))}
                   </div>
                 </div>
 
@@ -247,14 +348,9 @@ const JacobiPage = () => {
                           type="number"
                           placeholder={`${axis}₀`}
                           className="rounded-xl border-none bg-gray-50 text-center font-bold focus-visible:ring-orange-500"
-                          value={
-                            initialGuess[axis as keyof typeof initialGuess]
-                          }
+                          value={initialGuess[axis]}
                           onChange={(e) =>
-                            setInitialGuess({
-                              ...initialGuess,
-                              [axis]: parseFloat(e.target.value) || 0,
-                            })
+                            handleGuessChange(axis, e.target.value)
                           }
                         />
                       </div>
@@ -289,10 +385,8 @@ const JacobiPage = () => {
                   syarat konvergensi.
                 </h3>
                 <p className="text-xs text-gray-500 leading-relaxed italic">
-                  agar lelaran mencapai solusi sejati{" "}
-                  <span className="text-white font-bold">(2, 4, 3)</span>,
-                  pengujian selisih nilai mutlak tiap variabel dihitung ketat
-                  terhadap batas epsilon.
+                  agar lelaran mencapai solusi sejati, pengujian selisih nilai
+                  mutlak tiap variabel dihitung ketat terhadap batas epsilon.
                 </p>
               </div>
 
@@ -320,7 +414,6 @@ const JacobiPage = () => {
                         <span className="text-[10px] text-gray-400 font-mono">
                           {label} =
                         </span>
-                        {/* Tersinkronisasi dengan state decimals */}
                         <span className="text-sm font-mono font-bold text-orange-400">
                           {val.toFixed(decimals)}
                         </span>
@@ -361,13 +454,9 @@ const JacobiPage = () => {
                   tabel lelaran numerik.
                 </h2>
               </div>
-
               <div className="h-[1px] flex-1 bg-gray-200 hidden md:block"></div>
-
               <div className="flex items-center gap-3">
-                {/* PEMANGGILAN KOMPONEN DECIMAL CONTROL */}
                 <DecimalControl decimals={decimals} setDecimals={setDecimals} />
-
                 {iterations.length > 0 && (
                   <motion.span
                     initial={{ opacity: 0, scale: 0.8 }}
@@ -422,7 +511,6 @@ const JacobiPage = () => {
                             <TableCell className="text-center font-bold text-gray-400 py-3.5">
                               {row.iterasi}
                             </TableCell>
-                            {/* Menggunakan state decimals untuk pemotongan angka */}
                             <TableCell className="text-center font-mono font-bold text-sm py-3.5 text-black">
                               {row.x.toFixed(decimals)}
                             </TableCell>
@@ -494,8 +582,9 @@ const JacobiPage = () => {
                             colSpan={7}
                             className="text-center py-24 text-gray-400 italic"
                           >
-                            silakan isi tebakan awal di atas lalu eksekusi
-                            tombol untuk memetakan status lelaran jacobi...
+                            silakan isi koefisien dan tebakan awal di atas lalu
+                            eksekusi tombol untuk memetakan status lelaran
+                            jacobi...
                           </TableCell>
                         </TableRow>
                       )}

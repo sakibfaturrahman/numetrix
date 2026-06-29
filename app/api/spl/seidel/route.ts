@@ -1,4 +1,4 @@
-// src/app/api/spl/gauss-seidel/route.ts
+// src/app/api/spl/seidel/route.ts
 
 import { NextResponse } from "next/server";
 import { solveGaussSeidel } from "@/lib/math/gauss-seidel";
@@ -7,7 +7,7 @@ export async function POST(req: Request) {
   try {
     const { matrixA, vectorB, initialGuess, maxIter } = await req.json();
 
-    // 1. Validasi data masuk
+    // Validasi data masuk
     if (!matrixA || !vectorB) {
       return NextResponse.json(
         {
@@ -17,17 +17,20 @@ export async function POST(req: Request) {
       );
     }
 
-    // 2. Eksekusi fungsi Gauss-Seidel
-    // Menggunakan toleransi 0.000001 (1e-6) agar pas berhenti di iterasi 10 (indeks 11) sesuai excel
+    // Putus referensi objek murni melalui deep clone
+    const cleanMatrixA = JSON.parse(JSON.stringify(matrixA));
+    const cleanVectorB = JSON.parse(JSON.stringify(vectorB));
+    const cleanGuess = JSON.parse(JSON.stringify(initialGuess || [1, 2, 2]));
+
+    // Eksekusi fungsi Gauss-Seidel dengan toleransi mutlak 1e-6
     const history = solveGaussSeidel(
-      matrixA,
-      vectorB,
-      initialGuess || [0, 0, 0],
+      cleanMatrixA,
+      cleanVectorB,
+      cleanGuess,
       0.000001,
-      maxIter || 30,
+      maxIter || 50,
     );
 
-    // 3. Kembalikan data dalam bentuk JSON array untuk dirender tabel
     return NextResponse.json(history);
   } catch (error: unknown) {
     const message =

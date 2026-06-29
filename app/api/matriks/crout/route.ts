@@ -7,7 +7,7 @@ export async function POST(req: Request) {
   try {
     const { matrixA, vectorB } = await req.json();
 
-    // --- Validasi keberadaan data ---
+    // Validasi keberadaan data
     if (!matrixA || !vectorB) {
       return NextResponse.json(
         { error: "data tidak lengkap. mohon isi matriks a dan vektor b." },
@@ -15,9 +15,8 @@ export async function POST(req: Request) {
       );
     }
 
-    // --- Validasi dimensi ---
+    // Validasi dimensi ukuran array
     const n = matrixA.length;
-
     if (
       !Array.isArray(matrixA) ||
       !Array.isArray(vectorB) ||
@@ -28,40 +27,36 @@ export async function POST(req: Request) {
       return NextResponse.json(
         {
           error:
-            "dimensi tidak valid. matriks a harus persegi (n×n) dan vektor b harus berukuran n (minimum 2×2).",
+            "dimensi tidak valid. matriks a harus persegi (n×n) dan vektor b harus berukuran n.",
         },
         { status: 400 },
       );
     }
 
-    // --- Validasi semua elemen adalah angka ---
+    // Validasi tipe data elemen angka
     const allNumbers =
-      matrixA.every((row: unknown[]) =>
-        row.every((v) => typeof v === "number" && isFinite(v)),
+      matrixA.every((row: number[]) =>
+        row.every((v: unknown) => typeof v === "number" && isFinite(v)),
       ) && vectorB.every((v: unknown) => typeof v === "number" && isFinite(v));
 
     if (!allNumbers) {
       return NextResponse.json(
-        {
-          error:
-            "semua nilai harus berupa angka yang valid (bukan NaN atau Infinity).",
-        },
+        { error: "semua nilai harus berupa angka yang valid." },
         { status: 400 },
       );
     }
 
-    // --- Jalankan dekomposisi Crout ---
-    // Catatan: validasi singular (l_qq = 0) dilakukan DALAM fungsi solveCroutDecomposition
-    // karena nilai l_qq bergantung pada hasil eliminasi, bukan elemen A asli.
-    const result = solveCroutDecomposition(matrixA, vectorB);
+    // Putus referensi memori objek dari frontend memakai deep clone murni
+    const cleanMatrixA = JSON.parse(JSON.stringify(matrixA));
+    const cleanVectorB = JSON.parse(JSON.stringify(vectorB));
+
+    // Eksekusi fungsi komputasi matematika crout sekuensial
+    const result = solveCroutDecomposition(cleanMatrixA, cleanVectorB);
 
     return NextResponse.json(result);
   } catch (error: unknown) {
     const message =
-      error instanceof Error
-        ? error.message
-        : "terjadi kesalahan tak terduga dalam perhitungan.";
-
+      error instanceof Error ? error.message : "terjadi kesalahan tak terduga.";
     return NextResponse.json({ error: message }, { status: 400 });
   }
 }

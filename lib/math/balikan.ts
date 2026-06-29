@@ -13,7 +13,7 @@ export interface BalikanResult {
 }
 
 // Menyelesaikan SPL Ax = b menggunakan metode Matriks Balikan.
-// Murni menggunakan presisi floating-point asli tanpa pembatasan nilai internal.
+// Menghilangkan penumpukan push log di dalam loop baris untuk menjaga kestabilan data array.
 export function solveInverseGaussJordan(
   A_input: number[][],
   b_input: number[],
@@ -55,7 +55,6 @@ export function solveInverseGaussJordan(
         Inv[i][j] /= pivot;
       }
 
-      // Pembulatan .toFixed() hanya digunakan pada label teks log langkah, nilai matriks tetap presisi tinggi
       steps.push({
         label: `normalisasi baris ${i + 1}: b${i + 1} ÷ ${pivot % 1 === 0 ? pivot.toFixed(0) : pivot.toFixed(2)}`,
         matrixA: A.map((r) => [...r]),
@@ -64,6 +63,8 @@ export function solveInverseGaussJordan(
     }
 
     // Eliminasi elemen kolom i di atas dan di bawah baris pivot utama
+    let stepLabelParts: string[] = [];
+
     for (let k = 0; k < n; k++) {
       if (k === i) continue; // Lewati baris pivot itu sendiri
 
@@ -78,7 +79,7 @@ export function solveInverseGaussJordan(
       // Pembersihan nilai sisa floating point agar kolom tereliminasi menjadi murni 0
       A[k][i] = 0;
 
-      // Format string log langkah OBE tanpa mengubah nilai asli komputasi numerik
+      // Catat sub-langkah operasi baris elementer
       const sign = factor > 0 ? "-" : "+";
       const absFactor = Math.abs(factor);
       const factorStr =
@@ -88,15 +89,20 @@ export function solveInverseGaussJordan(
             ? absFactor.toFixed(0)
             : absFactor.toFixed(2);
 
+      stepLabelParts.push(`b${k + 1} ${sign} ${factorStr}b${i + 1}`);
+    }
+
+    // Perekaman snapshot matriks dilakukan di sini setelah seluruh baris pada kolom i selesai dieliminasi
+    if (stepLabelParts.length > 0) {
       steps.push({
-        label: `operasi baris: b${k + 1} ${sign} ${factorStr}b${i + 1}`,
+        label: `eliminasi kolom ke-${i + 1}: ${stepLabelParts.join(", ")}`,
         matrixA: A.map((r) => [...r]),
         matrixInv: Inv.map((r) => [...r]),
       });
     }
   }
 
-  // Hitung solusi akhir menggunakan matriks invers dengan tingkat presisi tinggi: x = A⁻¹ · b
+  // Hitung solusi akhir menggunakan matriks invers hasil final eliminasi: x = A⁻¹ · b
   const solution = new Array(n).fill(0);
   for (let i = 0; i < n; i++) {
     for (let j = 0; j < n; j++) {

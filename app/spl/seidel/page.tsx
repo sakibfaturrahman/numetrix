@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/table";
 import { GuideModal } from "@/components/common/guide-modal";
 import { ErrorMessage } from "@/components/common/error-message";
-import { DecimalControl } from "@/components/common/decimal-control"; // Import komponen baru
+import { DecimalControl } from "@/components/common/decimal-control";
 import {
   RotateCcw,
   Play,
@@ -47,19 +47,22 @@ const GaussSeidelPage = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [iterations, setIterations] = useState<GaussSeidelIteration[]>([]);
-  
-  // State untuk mengontrol jumlah angka di belakang koma (Default = 4 sesuai Excel)
   const [decimals, setDecimals] = useState<number>(4);
 
-  // Default tebakan awal P0 = (1, 2, 2)
-  const [initialGuess, setInitialGuess] = useState({ x: 1, y: 2, z: 2 });
-
-  const matrixA = [
+  // Inisialisasi string-number agar form fleksibel saat dikosongkan user
+  const [matrixA, setMatrixA] = useState<(string | number)[][]>([
     [4, -1, 1],
     [4, -8, 1],
     [-2, 1, 5],
-  ];
-  const vectorB = [7, -21, 15];
+  ]);
+  const [vectorB, setVectorB] = useState<(string | number)[]>([7, -21, 15]);
+  const [initialGuess, setInitialGuess] = useState<{
+    [key: string]: string | number;
+  }>({
+    x: 1,
+    y: 2,
+    z: 2,
+  });
 
   useEffect(() => {
     const hasSeenGuide = localStorage.getItem("hasSeenSeidelGuide");
@@ -71,6 +74,22 @@ const GaussSeidelPage = () => {
     localStorage.setItem("hasSeenSeidelGuide", "true");
   };
 
+  const handleAChange = (row: number, col: number, value: string) => {
+    const newMatrix = matrixA.map((r) => [...r]);
+    newMatrix[row][col] = value;
+    setMatrixA(newMatrix);
+  };
+
+  const handleBChange = (row: number, value: string) => {
+    const newVector = [...vectorB];
+    newVector[row] = value;
+    setVectorB(newVector);
+  };
+
+  const handleGuessChange = (axis: string, value: string) => {
+    setInitialGuess({ ...initialGuess, [axis]: value });
+  };
+
   const lastIter =
     iterations.length > 0 ? iterations[iterations.length - 1] : null;
 
@@ -80,53 +99,82 @@ const GaussSeidelPage = () => {
     lastIter.isConvergedY &&
     lastIter.isConvergedZ;
 
+  // Generator fungsi string builder otomatis untuk Gauss-Seidel secara real-time
+  const generateFormulaText = (index: number, variableName: string) => {
+    const bVal = parseFloat(vectorB[index]?.toString()) || 0;
+    const diagVal = parseFloat(matrixA[index][index]?.toString()) || 1;
+
+    const vars = ["x", "y", "z"];
+    let parts: string[] = [];
+
+    parts.push(bVal.toString());
+
+    vars.forEach((v, j) => {
+      if (j !== index) {
+        const coef = parseFloat(matrixA[index][j]?.toString()) || 0;
+        if (coef > 0) {
+          parts.push(`- ${coef === 1 ? "" : coef}${v}`);
+        } else if (coef < 0) {
+          parts.push(`+ ${Math.abs(coef) === 1 ? "" : Math.abs(coef)}${v}`);
+        }
+      }
+    });
+
+    return `${variableName} = (${parts.join(" ")}) / ${diagVal}`;
+  };
+
   const calculateSeidel = async () => {
     setLoading(true);
     setError(null);
     setIterations([]);
+
+    const parsedMatrixA = matrixA.map((row) =>
+      row.map((val) => (val === "" ? 0 : parseFloat(val.toString()) || 0)),
+    );
+    const parsedVectorB = vectorB.map((val) =>
+      val === "" ? 0 : parseFloat(val.toString()) || 0,
+    );
+    const parsedGuess = ["x", "y", "z"].map((axis) =>
+      initialGuess[axis] === ""
+        ? 0
+        : parseFloat(initialGuess[axis].toString()) || 0,
+    );
+
     try {
       const response = await fetch("/api/spl/seidel", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          matrixA,
-          vectorB,
-          initialGuess: [initialGuess.x, initialGuess.y, initialGuess.z],
-          maxIter: 30,
+          matrixA: parsedMatrixA,
+          vectorB: parsedVectorB,
+          initialGuess: parsedGuess,
+          maxIter: 50,
         }),
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        console.error("Backend Error:", data);
-        setError(
-          data.error || `Gagal mengambil data. Status: ${response.status}`,
-        );
+        setError(data.error || "gagal melakukan lelaran gauss-seidel.");
         return;
       }
 
-      if (!Array.isArray(data)) {
-        throw new Error(
-          "Format respons dari server tidak valid (bukan array).",
-        );
-      }
-
       setIterations(data);
-    } catch (err: unknown) {
-      const msg =
-        err instanceof Error
-          ? err.message
-          : "Terputus dari server. Pastikan rute API sudah benar.";
-      console.error("Fetch Error:", msg);
-      setError(msg);
+    } catch {
+      setError("terputus dari server. pastikan api berjalan dengan aman.");
     } finally {
       setLoading(false);
     }
   };
 
   const resetInput = () => {
-    setInitialGuess({ x: 1, y: 2, z: 2 });
+    setMatrixA([
+      ["", "", ""],
+      ["", "", ""],
+      ["", "", ""],
+    ]);
+    setVectorB(["", "", ""]);
+    setInitialGuess({ x: "", y: "", z: "" });
     setIterations([]);
     setError(null);
   };
@@ -142,8 +190,8 @@ const GaussSeidelPage = () => {
         description="pahami mekanisme iterasi sekuensial sebelum menjalankan simulasi."
         theoryOverview="berbeda dengan jacobi, gauss-seidel langsung menggunakan nilai variabel baru yang terhitung di baris yang sama untuk menghitung variabel berikutnya. hal ini membuat konvergensi jauh lebih cepat."
         steps={[
+          "masukkan koefisien pada matriks A dan elemen konstanta pada vektor b.",
           "masukkan tebakan awal (p₀) untuk memulai lelaran pertama.",
-          "perhatikan fungsi lelaran sekuensial dari persamaan spl asli.",
           "klik 'mulai lelaran' untuk melihat hasil konvergensi sejati pada tabel.",
         ]}
         onClose={handleCloseGuide}
@@ -226,25 +274,62 @@ const GaussSeidelPage = () => {
                     <span className="text-[10px] font-bold text-gray-300 uppercase block mb-2 tracking-widest text-center">
                       fungsi x
                     </span>
-                    <p className="font-mono text-xs text-center tracking-tighter font-bold text-emerald-600">
-                      x = (7 + y − z) / 4
+                    <p className="font-mono text-xs text-center tracking-tighter font-bold text-emerald-600 truncate">
+                      {generateFormulaText(0, "x")}
                     </p>
                   </div>
                   <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100">
                     <span className="text-[10px] font-bold text-gray-300 uppercase block mb-2 tracking-widest text-center">
                       fungsi y
                     </span>
-                    <p className="font-mono text-xs text-center tracking-tighter font-bold text-emerald-600">
-                      y = (−21 − 4x − z) / −8
+                    <p className="font-mono text-xs text-center tracking-tighter font-bold text-emerald-600 truncate">
+                      {generateFormulaText(1, "y")}
                     </p>
                   </div>
                   <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100">
                     <span className="text-[10px] font-bold text-gray-300 uppercase block mb-2 tracking-widest text-center">
                       fungsi z
                     </span>
-                    <p className="font-mono text-xs text-center tracking-tighter font-bold text-emerald-600">
-                      z = (15 + 2x − y) / 5
+                    <p className="font-mono text-xs text-center tracking-tighter font-bold text-emerald-600 truncate">
+                      {generateFormulaText(2, "z")}
                     </p>
+                  </div>
+                </div>
+
+                {/* DUAL MATRIX GRID INPUT VERTIKAL */}
+                <div className="flex flex-col md:flex-row items-center justify-center gap-8 pt-6">
+                  <div className="grid grid-cols-3 gap-3 p-4 bg-gray-50 rounded-[30px] border border-gray-100 relative">
+                    <span className="absolute -top-6 left-2 text-[10px] font-bold text-gray-300 uppercase tracking-widest font-sans">
+                      matriks a
+                    </span>
+                    {matrixA.map((row, r) =>
+                      row.map((val, c) => (
+                        <Input
+                          key={`a-${r}-${c}`}
+                          type="number"
+                          value={val}
+                          onChange={(e) => handleAChange(r, c, e.target.value)}
+                          className="w-16 h-16 md:w-20 md:h-20 text-center text-lg font-bold rounded-2xl border-none shadow-sm bg-white focus-visible:ring-emerald-500"
+                        />
+                      )),
+                    )}
+                  </div>
+
+                  <div className="h-40 w-[2px] bg-gray-100 hidden md:block" />
+
+                  <div className="flex flex-col gap-3 p-4 bg-emerald-50/30 rounded-[30px] border border-emerald-100 relative">
+                    <span className="absolute -top-6 left-2 text-[10px] font-bold text-emerald-600 uppercase tracking-widest font-sans">
+                      vektor b
+                    </span>
+                    {vectorB.map((val, r) => (
+                      <Input
+                        key={`b-${r}`}
+                        type="number"
+                        value={val}
+                        onChange={(e) => handleBChange(r, e.target.value)}
+                        className="w-16 h-16 md:w-20 md:h-20 text-center text-lg font-bold rounded-2xl border-none shadow-sm bg-white text-emerald-600 focus-visible:ring-emerald-500"
+                      />
+                    ))}
                   </div>
                 </div>
 
@@ -259,14 +344,9 @@ const GaussSeidelPage = () => {
                           type="number"
                           placeholder={`${axis}₀`}
                           className="rounded-xl border-none bg-gray-50 text-center font-bold focus-visible:ring-emerald-500"
-                          value={
-                            initialGuess[axis as keyof typeof initialGuess]
-                          }
+                          value={initialGuess[axis]}
                           onChange={(e) =>
-                            setInitialGuess({
-                              ...initialGuess,
-                              [axis]: parseFloat(e.target.value) || 0,
-                            })
+                            handleGuessChange(axis, e.target.value)
                           }
                         />
                       </div>
@@ -302,8 +382,7 @@ const GaussSeidelPage = () => {
                 </h3>
                 <p className="text-xs text-gray-500 leading-relaxed italic">
                   karena konvergensinya sekuensial, galat meluncur turun jauh
-                  lebih cepat daripada jacobi menuju solusi sejati{" "}
-                  <span className="text-white font-bold">(2, 4, 3)</span>.
+                  lebih cepat daripada jacobi menuju solusi sejati.
                 </p>
               </div>
 
@@ -331,7 +410,6 @@ const GaussSeidelPage = () => {
                         <span className="text-[10px] text-gray-400 font-mono">
                           {label} =
                         </span>
-                        {/* Menyesuaikan format angka panel dengan state decimals */}
                         <span className="text-sm font-mono font-bold text-emerald-400">
                           {val.toFixed(decimals)}
                         </span>
@@ -372,13 +450,9 @@ const GaussSeidelPage = () => {
                   tabel lelaran seidel.
                 </h2>
               </div>
-              
               <div className="h-[1px] flex-1 bg-gray-200 hidden md:block"></div>
-
-              {/* DECIMAL CONTROL COMPONENT */}
               <div className="flex items-center gap-3">
                 <DecimalControl decimals={decimals} setDecimals={setDecimals} />
-
                 {iterations.length > 0 && (
                   <motion.span
                     initial={{ opacity: 0, scale: 0.8 }}
@@ -433,7 +507,6 @@ const GaussSeidelPage = () => {
                             <TableCell className="text-center font-bold text-gray-400 py-3.5">
                               {row.iterasi}
                             </TableCell>
-                            {/* Menggunakan state decimals untuk mengatur presisi koma di tabel */}
                             <TableCell className="text-center font-mono font-bold text-sm py-3.5 text-black">
                               {row.x.toFixed(decimals)}
                             </TableCell>

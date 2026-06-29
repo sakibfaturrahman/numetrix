@@ -6,7 +6,7 @@ export async function POST(req: Request) {
   try {
     const { matrixA, vectorB } = await req.json();
 
-    // 1. Validasi keberadaan data
+    // Validasi keberadaan data
     if (!matrixA || !vectorB) {
       return NextResponse.json(
         { error: "data tidak lengkap. mohon isi matriks a dan vektor b." },
@@ -14,7 +14,7 @@ export async function POST(req: Request) {
       );
     }
 
-    // 2. Validasi dimensi: matriks harus n×n dan vektor harus panjang n
+    // Validasi dimensi matriks harus nxn dan vektor harus panjang n
     const n = matrixA.length;
     if (
       !Array.isArray(matrixA) ||
@@ -31,7 +31,7 @@ export async function POST(req: Request) {
       );
     }
 
-    // 3. Validasi semua nilai adalah angka (Aman dari TypeScript Strict Check)
+    // Validasi semua nilai adalah angka aman dari typescript strict check
     const allNumbers =
       matrixA.every((row: number[]) =>
         row.every((v: unknown) => typeof v === "number" && !Number.isNaN(v)),
@@ -45,8 +45,12 @@ export async function POST(req: Request) {
       );
     }
 
-    // 4. Eksekusi fungsi matematika balikan yang sudah diperbaiki
-    const result = solveInverseGaussJordan(matrixA, vectorB);
+    // Putus referensi memori dengan deep clone objek input murni
+    const cleanMatrixA = JSON.parse(JSON.stringify(matrixA));
+    const cleanVectorB = JSON.parse(JSON.stringify(vectorB));
+
+    // Eksekusi fungsi matematika balikan yang sudah diperbaiki
+    const result = solveInverseGaussJordan(cleanMatrixA, cleanVectorB);
     return NextResponse.json(result);
   } catch (error: unknown) {
     const message =
