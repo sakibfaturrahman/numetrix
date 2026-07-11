@@ -27,6 +27,7 @@ import {
   HelpCircle,
   Loader2,
   CheckCircle2,
+  Sparkles,
 } from "lucide-react";
 
 interface GaussSeidelIteration {
@@ -49,18 +50,19 @@ const GaussSeidelPage = () => {
   const [iterations, setIterations] = useState<GaussSeidelIteration[]>([]);
   const [decimals, setDecimals] = useState<number>(4);
 
+  // Dikosongkan secara murni saat pertama kali halaman dimuat
   const [matrixA, setMatrixA] = useState<(string | number)[][]>([
-    [4, -1, 1],
-    [4, -8, 1],
-    [-2, 1, 5],
+    ["", "", ""],
+    ["", "", ""],
+    ["", "", ""],
   ]);
-  const [vectorB, setVectorB] = useState<(string | number)[]>([7, -21, 15]);
+  const [vectorB, setVectorB] = useState<(string | number)[]>(["", "", ""]);
   const [initialGuess, setInitialGuess] = useState<{
     [key: string]: string | number;
   }>({
-    x: 1,
-    y: 2,
-    z: 2,
+    x: "",
+    y: "",
+    z: "",
   });
 
   useEffect(() => {
@@ -89,6 +91,19 @@ const GaussSeidelPage = () => {
     setInitialGuess({ ...initialGuess, [axis]: value });
   };
 
+  // CTA Interaktif untuk mengisi contoh soal ujian secara instan jika diinginkan user
+  const injectExampleProblem = () => {
+    setMatrixA([
+      [4, -1, -1],
+      [-2, 6, 1],
+      [1, -1, 5],
+    ]);
+    setVectorB([3, 9, -6]);
+    setInitialGuess({ x: 0, y: 0, z: 0 });
+    setIterations([]);
+    setError(null);
+  };
+
   const lastIter =
     iterations.length > 0 ? iterations[iterations.length - 1] : null;
 
@@ -99,9 +114,10 @@ const GaussSeidelPage = () => {
     lastIter.isConvergedZ;
 
   const generateFormulaText = (index: number, variableName: string) => {
-    const bVal = parseFloat(vectorB[index]?.toString()) || 0;
-    const diagVal = parseFloat(matrixA[index][index]?.toString()) || 1;
+    const diagVal = parseFloat(matrixA[index][index]?.toString());
+    if (isNaN(diagVal) || diagVal === 0) return `${variableName} = ...`;
 
+    const bVal = parseFloat(vectorB[index]?.toString()) || 0;
     const vars = ["x", "y", "z"];
     let parts: string[] = [];
 
@@ -122,20 +138,30 @@ const GaussSeidelPage = () => {
   };
 
   const calculateSeidel = async () => {
+    // Validasi input kosong sebelum melakukan hitungan ke API
+    const isMatrixEmpty = matrixA.some((row) => row.some((v) => v === ""));
+    const isVectorEmpty = vectorB.some((v) => v === "");
+    const isGuessEmpty = ["x", "y", "z"].some(
+      (axis) => initialGuess[axis] === "",
+    );
+
+    if (isMatrixEmpty || isVectorEmpty || isGuessEmpty) {
+      setError(
+        "mohon isi semua kolom matriks koefisien, vektor hasil, dan tebakan awal.",
+      );
+      return;
+    }
+
     setLoading(true);
     setError(null);
     setIterations([]);
 
     const parsedMatrixA = matrixA.map((row) =>
-      row.map((val) => (val === "" ? 0 : parseFloat(val.toString()) || 0)),
+      row.map((val) => parseFloat(val.toString()) || 0),
     );
-    const parsedVectorB = vectorB.map((val) =>
-      val === "" ? 0 : parseFloat(val.toString()) || 0,
-    );
-    const parsedGuess = ["x", "y", "z"].map((axis) =>
-      initialGuess[axis] === ""
-        ? 0
-        : parseFloat(initialGuess[axis].toString()) || 0,
+    const parsedVectorB = vectorB.map((val) => parseFloat(val.toString()) || 0);
+    const parsedGuess = ["x", "y", "z"].map(
+      (axis) => parseFloat(initialGuess[axis].toString()) || 0,
     );
 
     try {
@@ -247,7 +273,7 @@ const GaussSeidelPage = () => {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* INPUT PERSAMAAN & TEBAKAN AWAL */}
             <Card className="lg:col-span-2 p-8 md:p-12 rounded-[40px] border-none shadow-xl bg-white flex flex-col gap-10">
-              <div className="flex justify-between items-center">
+              <div className="flex justify-between items-center flex-wrap gap-4">
                 <div>
                   <h2 className="text-xl font-bold tracking-tight">
                     persamaan lelaran seidel.
@@ -256,14 +282,25 @@ const GaussSeidelPage = () => {
                     substitusi berantai langsung dari variabel ter-update.
                   </p>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={resetInput}
-                  className="rounded-full hover:bg-red-50 group"
-                >
-                  <RotateCcw className="w-4 h-4 text-gray-400 group-hover:text-red-500 transition-colors" />
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={injectExampleProblem}
+                    className="rounded-full border-emerald-200 bg-emerald-50/50 text-emerald-700 hover:bg-emerald-100 flex gap-2 font-bold text-[10px] uppercase tracking-wider h-9 px-4 border-none"
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    gunakan contoh soal
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={resetInput}
+                    className="rounded-full hover:bg-red-50 group w-9 h-9"
+                  >
+                    <RotateCcw className="w-4 h-4 text-gray-400 group-hover:text-red-500 transition-colors" />
+                  </Button>
+                </div>
               </div>
 
               <div className="space-y-4">
@@ -369,7 +406,7 @@ const GaussSeidelPage = () => {
               </Button>
             </Card>
 
-            {/* INFO PANEL KONVERGENSI - DIUBAH MENJADI SOFT LIGHT MODE THEME */}
+            {/* INFO PANEL KONVERGENSI */}
             <Card className="p-8 md:p-10 rounded-[40px] border border-gray-100 shadow-xl bg-white text-gray-800 flex flex-col justify-between overflow-hidden relative">
               <div className="relative z-10">
                 <div className="w-12 h-12 bg-emerald-50 rounded-2xl flex items-center justify-center mb-6">
@@ -576,8 +613,9 @@ const GaussSeidelPage = () => {
                             colSpan={7}
                             className="text-center py-24 text-gray-400 italic"
                           >
-                            silakan klik tombol kalkulasi di atas untuk melihat
-                            pemetaan tabel lelaran seidel...
+                            silakan isi koefisien dan tebakan awal di atas lalu
+                            eksekusi tombol untuk memetakan status lelaran
+                            seidel...
                           </TableCell>
                         </TableRow>
                       )}
@@ -596,4 +634,3 @@ const GaussSeidelPage = () => {
 };
 
 export default GaussSeidelPage;
-  

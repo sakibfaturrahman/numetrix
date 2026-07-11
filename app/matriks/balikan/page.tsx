@@ -19,6 +19,7 @@ import {
   Calculator,
   CheckCircle2,
   Grid3X3,
+  Sparkles,
 } from "lucide-react";
 
 interface MatrixStep {
@@ -41,12 +42,13 @@ const MatriksBalikanPage = () => {
 
   const [decimals, setDecimals] = useState<number>(2);
 
+  // Form diinisialisasi kosong agar siap menerima input manual soal baru
   const [matrixA, setMatrixA] = useState<(string | number)[][]>([
-    [1, -1, 2],
-    [3, 0, 1],
-    [1, 0, 2],
+    ["", "", ""],
+    ["", "", ""],
+    ["", "", ""],
   ]);
-  const [vectorB, setVectorB] = useState<(string | number)[]>([5, 10, 5]);
+  const [vectorB, setVectorB] = useState<(string | number)[]>(["", "", ""]);
 
   useEffect(() => {
     const hasSeenGuide = localStorage.getItem("hasSeenInverseGuide");
@@ -68,6 +70,18 @@ const MatriksBalikanPage = () => {
     const newVector = [...vectorB];
     newVector[row] = value;
     setVectorB(newVector);
+  };
+
+  // CTA fungsional untuk memuat data sampel/contoh soal secara otomatis
+  const loadExampleData = () => {
+    setMatrixA([
+      [4, -1, -1],
+      [-2, 6, 1],
+      [1, -1, 5],
+    ]);
+    setVectorB([3, 9, -6]);
+    setResults(null);
+    setError(null);
   };
 
   const resetInput = () => {
@@ -143,7 +157,6 @@ const MatriksBalikanPage = () => {
         <div className="max-w-6xl mx-auto">
           <ErrorMessage message={error} onClose={() => setError(null)} />
 
-          {/* FLOATING ACTION FLOATING BUTTON: DIUBAH DARI bg-black MENJADI SOFT BLUE ACCENT */}
           <div className="fixed bottom-10 right-10 z-[100]">
             <Button
               onClick={() => setShowGuide(true)}
@@ -202,14 +215,25 @@ const MatriksBalikanPage = () => {
                     koefisien [a | b]
                   </p>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={resetInput}
-                  className="rounded-full hover:bg-red-50 group transition-colors"
-                >
-                  <RotateCcw className="w-4 h-4 text-gray-400 group-hover:text-red-500" />
-                </Button>
+                <div className="flex items-center gap-2">
+                  {/* CTA DENGAN WARNA SOFT BLUE AKURAT UNTUK AUTO-FILL DATA CONTOH */}
+                  <Button
+                    variant="outline"
+                    onClick={loadExampleData}
+                    className="flex gap-2 items-center rounded-full text-[10px] font-bold uppercase tracking-wider border-blue-100 bg-blue-50/50 text-blue-600 hover:bg-blue-50 hover:text-blue-700 transition-colors py-1.5 px-4 h-8"
+                  >
+                    <Sparkles className="w-3 h-3" />
+                    contoh soal
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={resetInput}
+                    className="rounded-full hover:bg-red-50 group transition-colors h-8 w-8"
+                  >
+                    <RotateCcw className="w-4 h-4 text-gray-400 group-hover:text-red-500" />
+                  </Button>
+                </div>
               </div>
 
               <div className="flex flex-col md:flex-row items-center justify-center gap-8">
@@ -223,9 +247,10 @@ const MatriksBalikanPage = () => {
                       <Input
                         key={`a-${r}-${c}`}
                         type="number"
+                        placeholder="0"
                         value={val}
                         onChange={(e) => handleAChange(r, c, e.target.value)}
-                        className="w-16 h-16 md:w-20 md:h-20 text-center text-lg font-bold rounded-2xl border-none shadow-sm bg-white focus-visible:ring-blue-500"
+                        className="w-16 h-16 md:w-20 md:h-20 text-center text-lg font-bold rounded-2xl border-none shadow-sm bg-white focus-visible:ring-blue-500 placeholder:text-gray-200"
                       />
                     )),
                   )}
@@ -249,16 +274,16 @@ const MatriksBalikanPage = () => {
                       <Input
                         key={`b-${r}`}
                         type="number"
+                        placeholder="0"
                         value={val}
                         onChange={(e) => handleBChange(r, e.target.value)}
-                        className="w-16 h-16 md:w-20 md:h-20 text-center text-lg font-bold rounded-2xl border-none shadow-sm bg-white text-blue-600 focus-visible:ring-blue-500"
+                        className="w-16 h-16 md:w-20 md:h-20 text-center text-lg font-bold rounded-2xl border-none shadow-sm bg-white text-blue-600 focus-visible:ring-blue-500 placeholder:text-blue-200"
                       />
                     </div>
                   ))}
                 </div>
               </div>
 
-              {/* ACTION COMPUTE BUTTON: DIUBAH DARI bg-black MENJADI SOFT PASTEL ROYAL BLUE */}
               <Button
                 onClick={calculateInverse}
                 disabled={loading}
@@ -273,7 +298,7 @@ const MatriksBalikanPage = () => {
               </Button>
             </Card>
 
-            {/* INFO PANEL: DIUBAH TOTAL DARI DARK THEME (bg-black text-white) MENJADI SOFT PASTEL LIGHT THEME */}
+            {/* INFO PANEL */}
             <Card className="p-8 md:p-10 rounded-[40px] border border-gray-100 shadow-xl bg-white text-black flex flex-col justify-between overflow-hidden relative">
               <div className="relative z-10">
                 <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center mb-6">

@@ -27,6 +27,7 @@ import {
   HelpCircle,
   Loader2,
   CheckCircle2,
+  Sparkles,
 } from "lucide-react";
 
 interface JacobiIteration {
@@ -49,18 +50,19 @@ const JacobiPage = () => {
   const [iterations, setIterations] = useState<JacobiIteration[]>([]);
   const [decimals, setDecimals] = useState<number>(6);
 
+  // State inisialisasi dikosongkan secara murni untuk menyambut soal baru secara manual
   const [matrixA, setMatrixA] = useState<(string | number)[][]>([
-    [4, -1, 1],
-    [4, -8, 1],
-    [-2, 1, 5],
+    ["", "", ""],
+    ["", "", ""],
+    ["", "", ""],
   ]);
-  const [vectorB, setVectorB] = useState<(string | number)[]>([7, -21, 15]);
+  const [vectorB, setVectorB] = useState<(string | number)[]>(["", "", ""]);
   const [initialGuess, setInitialGuess] = useState<{
     [key: string]: string | number;
   }>({
-    x: 1,
-    y: 2,
-    z: 2,
+    x: "",
+    y: "",
+    z: "",
   });
 
   useEffect(() => {
@@ -89,6 +91,19 @@ const JacobiPage = () => {
     setInitialGuess({ ...initialGuess, [axis]: value });
   };
 
+  // Fungsi CTA untuk auto fill data contoh dari soal ujian agar mempermudah pengujian berulang
+  const loadExampleData = () => {
+    setMatrixA([
+      [4, -1, -1],
+      [-2, 6, 1],
+      [1, -1, 5],
+    ]);
+    setVectorB([3, 9, -6]);
+    setInitialGuess({ x: 0, y: 0, z: 0 });
+    setIterations([]);
+    setError(null);
+  };
+
   const lastIter =
     iterations.length > 0 ? iterations[iterations.length - 1] : null;
 
@@ -99,9 +114,10 @@ const JacobiPage = () => {
     lastIter.isConvergedZ;
 
   const generateFormulaText = (index: number, variableName: string) => {
-    const bVal = parseFloat(vectorB[index]?.toString()) || 0;
-    const diagVal = parseFloat(matrixA[index][index]?.toString()) || 1;
+    const diagVal = parseFloat(matrixA[index][index]?.toString());
+    if (isNaN(diagVal) || diagVal === 0) return `${variableName} = ...`;
 
+    const bVal = parseFloat(vectorB[index]?.toString()) || 0;
     const vars = ["x", "y", "z"];
     let parts: string[] = [];
 
@@ -122,6 +138,20 @@ const JacobiPage = () => {
   };
 
   const calculateJacobi = async () => {
+    // Validasi input kosong sebelum melakukan pengiriman payload ke server API
+    const isMatrixEmpty = matrixA.some((row) => row.some((val) => val === ""));
+    const isVectorEmpty = vectorB.some((val) => val === "");
+    const isGuessEmpty = ["x", "y", "z"].some(
+      (axis) => initialGuess[axis] === "",
+    );
+
+    if (isMatrixEmpty || isVectorEmpty || isGuessEmpty) {
+      setError(
+        "mohon isi semua kolom matriks koefisien, vektor konstanta, dan tebakan awal.",
+      );
+      return;
+    }
+
     setLoading(true);
     setError(null);
     setIterations([]);
@@ -248,7 +278,7 @@ const JacobiPage = () => {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* INPUT PERSAMAAN & TEBAKAN AWAL DINAMIS */}
             <Card className="lg:col-span-2 p-8 md:p-12 rounded-[40px] border-none shadow-xl bg-white flex flex-col gap-10">
-              <div className="flex justify-between items-center">
+              <div className="flex justify-between items-center flex-wrap gap-4">
                 <div>
                   <h2 className="text-xl font-bold tracking-tight">
                     persamaan lelaran.
@@ -258,14 +288,25 @@ const JacobiPage = () => {
                     otomatis.
                   </p>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={resetInput}
-                  className="rounded-full hover:bg-red-50 group"
-                >
-                  <RotateCcw className="w-4 h-4 text-gray-400 group-hover:text-red-500 transition-colors" />
-                </Button>
+                <div className="flex items-center gap-2">
+                  {/* BUTTON CTA DINAMIS UNTUK AUTO-FILL CONTOH SOAL */}
+                  <Button
+                    onClick={loadExampleData}
+                    variant="outline"
+                    className="flex items-center gap-2 rounded-xl text-[10px] font-bold uppercase tracking-wider border-orange-200 bg-orange-50/50 text-orange-600 hover:bg-orange-100/60 hover:text-orange-700 transition-all px-3.5 py-2"
+                  >
+                    <Sparkles className="w-3 h-3" />
+                    isi soal ujian
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={resetInput}
+                    className="rounded-full hover:bg-red-50 group"
+                  >
+                    <RotateCcw className="w-4 h-4 text-gray-400 group-hover:text-red-500 transition-colors" />
+                  </Button>
+                </div>
               </div>
 
               <div className="space-y-4">
@@ -372,7 +413,7 @@ const JacobiPage = () => {
               </Button>
             </Card>
 
-            {/* INFO PANEL KONVERGENSI - DIUBAH MENJADI SOFT LIGHT ORANGE THEME */}
+            {/* INFO PANEL KONVERGENSI */}
             <Card className="p-8 md:p-10 rounded-[40px] border border-orange-100/80 shadow-xl bg-orange-50/60 text-zinc-800 flex flex-col justify-between overflow-hidden relative">
               <div className="relative z-10">
                 <div className="w-12 h-12 bg-orange-500/10 rounded-2xl flex items-center justify-center mb-6">
@@ -579,8 +620,8 @@ const JacobiPage = () => {
                             colSpan={7}
                             className="text-center py-24 text-gray-400 italic"
                           >
-                            silakan isi koefisien dan tebakan awal di atas lalu
-                            eksekusi tombol untuk memetakan status lelaran
+                            silakan isi koefisien dan tebakan awal di atas atau
+                            klik tombol "isi soal ujian" untuk memetakan lelaran
                             jacobi...
                           </TableCell>
                         </TableRow>

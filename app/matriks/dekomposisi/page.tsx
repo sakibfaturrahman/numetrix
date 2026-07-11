@@ -8,14 +8,6 @@ import Footer from "@/components/layouts/footer";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { GuideModal } from "@/components/common/guide-modal";
 import { ErrorMessage } from "@/components/common/error-message";
 import { DecimalControl } from "@/components/common/decimal-control";
@@ -28,6 +20,7 @@ import {
   ArrowDown,
   IterationCcw,
   SplitSquareHorizontal,
+  Sparkles,
 } from "lucide-react";
 
 interface LUStep {
@@ -54,13 +47,13 @@ const DekomposisiLUPage = () => {
   const [showSteps, setShowSteps] = useState(true);
   const [decimals, setDecimals] = useState<number>(2);
 
-  // Menggunakan string agar kotak form input bisa dikosongkan dengan leluasa saat diketik
+  // State awal murni dikosongkan agar pengguna leluasa mengetik soal baru
   const [matrixA, setMatrixA] = useState<(string | number)[][]>([
-    [1, 1, 1],
-    [2, 4, 2],
-    [-1, 5, 8],
+    ["", "", ""],
+    ["", "", ""],
+    ["", "", ""],
   ]);
-  const [vectorB, setVectorB] = useState<(string | number)[]>([6, 16, 31]);
+  const [vectorB, setVectorB] = useState<(string | number)[]>(["", "", ""]);
 
   useEffect(() => {
     const hasSeenGuide = localStorage.getItem("hasSeenLUDecompositionGuide");
@@ -82,6 +75,18 @@ const DekomposisiLUPage = () => {
     const newVector = [...vectorB];
     newVector[row] = value;
     setVectorB(newVector);
+  };
+
+  // Fungsi CTA untuk menyuntikkan contoh soal yang valid secara instan
+  const loadExampleData = () => {
+    setMatrixA([
+      [2, 1, 1],
+      [4, 3, 3],
+      [-2, 1, 2],
+    ]);
+    setVectorB([7, 17, 4]);
+    setResults(null);
+    setError(null);
   };
 
   const resetInput = () => {
@@ -138,7 +143,7 @@ const DekomposisiLUPage = () => {
   };
 
   return (
-    <div className="antialiased bg-[#f2f2f2] min-h-screen font-sans lowercase selection:bg-emerald-100 selection:text-emerald-900">
+    <div className="antialiased bg-[#f2f2f2] min-h-screen font-sans selection:bg-emerald-100 selection:text-emerald-900 lowercase">
       <Navbar />
 
       <GuideModal
@@ -148,9 +153,9 @@ const DekomposisiLUPage = () => {
         description="pahami alur pemfaktoran matriks menjadi matriks segitiga L dan U."
         theoryOverview="metode ini memfaktorkan A = LU. L adalah matriks segitiga bawah dengan diagonal 1, dan U adalah matriks segitiga atas hasil eliminasi Gauss. solusi dicari melalui dua tahap: penyulihan maju (Ly = b) untuk mencari y, lalu penyulihan mundur (Ux = y) untuk mencari x."
         steps={[
-          "masukkan koefisien matriks a pada grid kiri.",
-          "isi konstanta hasil pada vektor b di kolom kanan (vertikal).",
-          "klik 'jalankan dekomposisi' untuk melihat proses faktorisasi L dan U, penyulihan maju Ly=b, serta penyulihan mundur Ux=y.",
+          "masukkan koefisien matriks a pada grid kiri secara manual.",
+          "isi konstanta hasil pada vektor b di kolom kanan.",
+          "klik 'jalankan dekomposisi' untuk melihat visualisasi alur penyulihan log.",
         ]}
         onClose={handleCloseGuide}
       />
@@ -184,9 +189,9 @@ const DekomposisiLUPage = () => {
                   <br /> metode lu gauss.
                 </h1>
                 <p className="text-gray-400 text-sm md:text-base leading-relaxed">
-                  pecah matriks A menjadi matriks segitiga bawah (L) dan
-                  segitiga atas (U). efisien untuk spl dengan vektor b
-                  bervariasi.
+                  pecah matriks A menjadi matriks segitiga bawah (L) yard
+                  segitiga atas (U). efisien untuk penyelesaian spl dengan
+                  susunan nilai dinamis.
                 </p>
               </div>
               <div className="w-full md:w-[350px] relative aspect-square">
@@ -204,7 +209,7 @@ const DekomposisiLUPage = () => {
           {/* INPUT SECTION */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <Card className="lg:col-span-2 p-8 md:p-12 rounded-[40px] border-none shadow-xl bg-white flex flex-col gap-10">
-              <div className="flex justify-between items-center">
+              <div className="flex justify-between items-start flex-wrap gap-4">
                 <div>
                   <h2 className="text-xl font-bold tracking-tight text-black">
                     susun matriks A.
@@ -213,14 +218,27 @@ const DekomposisiLUPage = () => {
                     koefisien [A | b]
                   </p>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={resetInput}
-                  className="rounded-full hover:bg-gray-100"
-                >
-                  <RotateCcw className="w-4 h-4 text-gray-400" />
-                </Button>
+
+                <div className="flex items-center gap-2">
+                  {/* BUTTON CTA PINTAR */}
+                  <Button
+                    variant="outline"
+                    onClick={loadExampleData}
+                    className="rounded-full bg-emerald-50/50 hover:bg-emerald-50 text-emerald-700 border border-emerald-100/80 text-[10px] font-bold uppercase tracking-wider px-4 py-2 flex gap-1.5 items-center transition-all"
+                  >
+                    <Sparkles className="w-3 h-3 text-emerald-500" />
+                    isi contoh otomatis
+                  </Button>
+
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={resetInput}
+                    className="rounded-full hover:bg-gray-100"
+                  >
+                    <RotateCcw className="w-4 h-4 text-gray-400" />
+                  </Button>
+                </div>
               </div>
 
               <div className="flex flex-col md:flex-row items-center justify-center gap-8">
@@ -278,7 +296,7 @@ const DekomposisiLUPage = () => {
               </Button>
             </Card>
 
-            {/* INFO PANEL (Diubah menjadi Soft Gray dengan Border Halus) */}
+            {/* INFO PANEL */}
             <Card className="p-8 md:p-10 rounded-[40px] border border-gray-200/60 shadow-xl bg-zinc-50 text-zinc-800 flex flex-col justify-between overflow-hidden relative">
               <div className="relative z-10">
                 <h3 className="text-lg font-bold mb-4 text-zinc-900">
@@ -534,7 +552,7 @@ const DekomposisiLUPage = () => {
                             <span className="text-[9px] text-emerald-600 font-bold uppercase tracking-widest">
                               langkah y{i + 1}
                             </span>
-                            <span className="font-mono text-xs font-bold text-gray-800">
+                            <span className="font-mono text-xs text-gray-800">
                               {step}
                             </span>
                           </div>
@@ -582,7 +600,7 @@ const DekomposisiLUPage = () => {
                             <span className="text-[9px] text-blue-600 font-bold uppercase tracking-widest">
                               langkah x{results.x.length - i}
                             </span>
-                            <span className="font-mono text-xs font-bold text-gray-800">
+                            <span className="font-mono text-xs text-bold text-gray-800">
                               {step}
                             </span>
                           </div>
@@ -608,7 +626,7 @@ const DekomposisiLUPage = () => {
                   </div>
                 </div>
 
-                {/* SOLUSI KESIMPULAN (Diubah dari bg-black menjadi Soft Mint Emerald) */}
+                {/* SOLUSI KESIMPULAN */}
                 <Card className="p-10 rounded-[45px] border border-emerald-100 shadow-xl bg-emerald-50/60 text-zinc-800 text-center relative overflow-hidden">
                   <h4 className="text-[10px] font-bold uppercase tracking-[0.4em] text-emerald-600 mb-8 font-sans">
                     solusi akhir sistem persamaan linear
